@@ -1,0 +1,69 @@
+AMAN DUBEY
+Email: amandubeysagarit@gmail.com
+Phone: +91-8269390982
+LinkedIn: https://www.linkedin.com/in/aman-dubey-667904199
+Current Location: Vijaynagar, Indore, M.P.
+Native City: Sagar, M.P.
+Languages: Hindi, English
+
+PROFESSIONAL SUMMARY:
+Experienced PHP and Laravel developer with 4 years of hands-on expertise in building and maintaining web applications. Proficient in PHP, Laravel, MySQL, and MongoDB, with a strong focus on writing efficient and optimized code. Adept at collaborating with cross-functional teams to deliver high-quality solutions.
+
+SKILLS:
+- Backend Frameworks & Languages: Laravel, PHP, CodeIgniter, Python scripting
+- Databases: MySQL, MongoDB (query optimization, data handling, observers, traits)
+- Frontend & JavaScript: JavaScript, jQuery, Alpine.js
+- Testing & Tools: Pest PHP (unit and feature testing), Git
+- Server & Deployment: Linux/Unix commands, Nginx server, PuTTY, Cron Jobs & Radius-based job scheduling
+- APIs & Integration: REST API development, WhatsApp Messaging API, Payment Gateway Integration, Push Notifications
+- Security & Architecture: Role-Based Access Control (RBAC), Permissions management
+
+WORK EXPERIENCE:
+1. Senior PHP Developer at Webwiders Software Solutions Pvt Ltd (Indore)
+   Duration: Oct 2023 - Present
+   - Leading Laravel & PHP web application development, MongoDB architecture, and REST APIs.
+
+2. IT Trainee at Dainik Bhaskar Corporation Limited (Bhopal)
+   Duration: Dec 2022 - Sep 2023
+   - Backend development, automation scripts, and database operations.
+
+3. Graduate Apprentice in Information Technology at GAIL (India) Ltd, Vijaipur (Guna)
+   Duration: Oct 2021 - Oct 2022
+   - IT operations, system maintenance, and software support.
+
+KEY PROJECTS:
+1. Nithra People (Attendance & Payroll Management System):
+   - Tech: Laravel, PHP, MySQL, MongoDB, jQuery, Alpine.js, Pest PHP.
+   - Built policy-based multi-login, attendance logs with MongoDB & APIs, workflow approval, shift rotation via cron jobs, daily WhatsApp attendance reporting, Pest PHP test cases, CSV/PDF report downloads, role & permissions.
+
+2. d1play (Online Gaming Streaming & Tournament Platform):
+   - Tech: Laravel, MySQL, jQuery, Nginx, RTMP on Linux.
+   - Setup RTMP live streaming on Linux using Nginx, m3u8 format live video player, live video detection, and gaming tournament management.
+
+3. Quads U (Tutors & Teachers Marketplace App):
+   - Tech: Laravel, PHP, MySQL, MongoDB, jQuery.
+   - Video conferencing between teachers & students, payment gateway integration, push notifications, email verification.
+
+4. Invito Hub (Digital Invitation Cards Platform):
+   - Tech: Laravel, MySQL, jQuery.
+   - Digital invitation card generation, WhatsApp & SMS link sharing.
+
+5. The Keys Guild (Live Precious Metals Rate Calculator):
+   - Tech: WordPress, jQuery, Live Gold/Silver/Platinum Rate APIs.
+
+EDUCATION:
+- Bachelor of Engineering (B.E.) in Information Technology (2020)
+  Govt. Indira Gandhi Engineering College, Sagar, M.P.
+- Polytechnic Diploma in Computer Science & Engineering (2017)
+  Govt. Polytechnic College, Sagar, M.P.
+
+CERTIFICATIONS:
+- UI/UX at Naresh IT, Hyderabad
+
+ADDITIONAL DETAILS FOR JOB APPLICATIONS:
+- Total Experience: 4 years
+- Relevant Laravel Experience: 4 years
+- Relevant PHP Experience: 4 years
+- Notice Period: 15-30 days (Negotiable / Immediate if remote)
+- Preferred Location: Remote / Work from Home (Open to Indore / Bhopal / Pan-India Remote)
+- Comfortable with Remote Work: Yes, 100%
