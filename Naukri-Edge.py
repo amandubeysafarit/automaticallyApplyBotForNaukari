@@ -1,24 +1,29 @@
 """
-Naukri Auto-Apply Bot - Microsoft Edge Version (Updated for Naukri.com 2026)
-================================================================================
-Automates job applications on Naukri.com using Selenium with Edge browser.
-Opens each job keyword search in a separate tab for faster collection.
+Naukri Auto-Apply Bot - Unified Master Edition (2026 Update)
+============================================================
+Single-command, intelligent job application bot for Naukri.com.
+- Filters strictly by candidate's preferences (Keywords, Experience, Location/Remote).
+- Automatically rejects non-matching jobs (Java, Spring Boot, ERP, .NET, Architect, etc.).
+- Auto-applies to direct Naukri 1-click jobs.
+- Auto-answers recruiter chatbot questionnaires using Gemini AI & Aman Dubey's CV.
+- For 'Apply on company site' jobs, extracts and records the real external company career portal URL.
+- Maintains exactly TWO clean, structured CSV files:
+    1. applied_jobs.csv       (All successfully applied jobs)
+    2. manual_apply_jobs.csv  (Jobs requiring manual action, external company portals, or failed attempts)
 
 Usage:
-    1. Copy .env.example to .env and fill in your details
-    2. pip install -r requirements.txt
-    3. python Naukri-Edge.py
-
-Requirements:
-    - Edge browser installed
-    - Dependencies from requirements.txt
+    python Naukri-Edge.py
 """
 
 import os
+import re
 import time
 import logging
+import warnings
+from datetime import datetime
 import pandas as pd
 from dotenv import load_dotenv
+
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
@@ -27,38 +32,48 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException, NoSuchElementException, WebDriverException
 from bs4 import BeautifulSoup
-from datetime import datetime
 
-# Try to use webdriver-manager for automatic driver management
+import gemini_helper
+
+# Suppress deprecation warnings
+warnings.filterwarnings('ignore', category=FutureWarning)
+
+# ------------------------------------------------------------
+# Configuration & Credentials
+# ------------------------------------------------------------
+load_dotenv()
+
+NAUKRI_EMAIL = os.getenv('NAUKRI_EMAIL', '').strip()
+NAUKRI_PASSWORD = os.getenv('NAUKRI_PASSWORD', '').strip()
+
+FIRSTNAME = os.getenv('FIRSTNAME', 'Aman').strip()
+LASTNAME = os.getenv('LASTNAME', 'Dubey').strip()
+
+# Target Job Search Preferences
+KEYWORDS = [kw.strip() for kw in os.getenv('KEYWORDS', 'php laravel, laravel developer, php, laravel').split(',') if kw.strip()]
+LOCATION = os.getenv('LOCATION', 'remote').strip().lower()
+
+# Parse candidate experience (e.g. '4 years' -> 4)
+total_exp_str = os.getenv('TOTAL_EXPERIENCE', '4 years')
+exp_match = re.search(r'\d+', total_exp_str)
+CANDIDATE_EXP = int(exp_match.group(0)) if exp_match else 4
+
+MAX_APPLICATIONS = int(os.getenv('MAX_APPLICATIONS', '50'))
+PAGES_PER_KEYWORD = int(os.getenv('PAGES_PER_KEYWORD', '2'))
+
+EDGE_DRIVER_PATH = os.getenv('EDGE_DRIVER_PATH', '').strip()
+
+# CSV Output Files (ONLY TWO CSV FILES AS REQUIRED)
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+APPLIED_CSV = os.path.join(BASE_DIR, "applied_jobs.csv")
+MANUAL_CSV = os.path.join(BASE_DIR, "manual_apply_jobs.csv")
+
+# Try to use webdriver-manager
 try:
     from webdriver_manager.microsoft import EdgeChromiumDriverManager
     WEBDRIVER_MANAGER_AVAILABLE = True
 except ImportError:
     WEBDRIVER_MANAGER_AVAILABLE = False
-
-# ------------------------------------------------------------
-# Configuration
-# ------------------------------------------------------------
-load_dotenv()
-
-# --- Naukri Credentials ---
-NAUKRI_EMAIL = os.getenv('NAUKRI_EMAIL', '')
-NAUKRI_PASSWORD = os.getenv('NAUKRI_PASSWORD', '')
-
-# --- Personal Details ---
-FIRSTNAME = os.getenv('FIRSTNAME', '')
-LASTNAME = os.getenv('LASTNAME', '')
-
-# --- Job Search ---
-KEYWORDS = [kw.strip() for kw in os.getenv('KEYWORDS', '').split(',') if kw.strip()]
-LOCATION = os.getenv('LOCATION', '').strip()
-
-# --- Limits ---
-MAX_APPLICATIONS = int(os.getenv('MAX_APPLICATIONS', '50'))
-PAGES_PER_KEYWORD = int(os.getenv('PAGES_PER_KEYWORD', '2'))
-
-# --- Edge Driver Path (optional, only if NOT using webdriver-manager) ---
-EDGE_DRIVER_PATH = os.getenv('EDGE_DRIVER_PATH', '')
 
 # ------------------------------------------------------------
 # Logging Setup
@@ -70,24 +85,102 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# ------------------------------------------------------------
+# Relevance & Eligibility Filtering Rules
+# ------------------------------------------------------------
+EXCLUDED_ROLES_AND_TECHS = [
+    # Non-PHP tech stacks
+    'java', 'spring boot', 'springboot', 'spring', '.net', 'dotnet', 'asp.net', 'c#', 'c++',
+    'golang', 'flutter', 'ios', 'android', 'swift', 'kotlin', 'ruby', 'rails',
+    # Enterprise ERP / CRM
+    'sap', 'oracle', 'salesforce', 'peoplesoft', 'workday', 'dynamics 365', 'infor', 'epicor',
+    # Data, Analytics & AI roles
+    'data scientist', 'data science', 'data engineer', 'machine learning', 'deep learning',
+    'ai lead', 'ai engineer', 'nlp', 'actuarial', 'data analyst',
+    # Infrastructure, Cloud & DevOps
+    'devops', 'cloud architect', 'platform engineer', 'kubernetes', 'wso2', 'databricks',
+    # Senior Leadership / Architect roles (Aman has 4 yrs exp)
+    'lead architect', 'enterprise architect', 'solution architect', 'adaptive lead',
+    'director', 'vp', 'vice president', 'general manager',
+    # Blockchain / Systems
+    'blockchain', 'solidity', 'rust', 'embedded'
+]
 
+CORE_KEYWORDS = ['php', 'laravel', 'codeigniter']
+
+
+def parse_experience_range(text):
+    """Extract min and max experience in years from strings like '17-25 Yrs', '3-6 years', '4+ yrs'."""
+    if not text:
+        return 0, 99
+    m = re.search(r'(\d+)\s*(?:-|to)\s*(\d+)', str(text))
+    if m:
+        return int(m.group(1)), int(m.group(2))
+    m_single = re.search(r'(\d+)\+?\s*(?:years|yrs)', str(text), re.I)
+    if m_single:
+        return int(m_single.group(1)), 99
+    return 0, 99
+
+
+def is_job_relevant(title, url, exp_str="", loc_str="", skills_str="", jd_snippet=""):
+    """
+    Evaluates whether a job matches candidate preferences:
+    - Target: PHP, Laravel, Web Development
+    - Reject: Java, Spring Boot, ERP, .NET, Architect, DevOps, etc.
+    - Experience: Candidate has 4 yrs -> reject min_exp > 6 yrs.
+    - Location: If LOCATION=remote, reject office-only non-remote roles.
+    Returns (is_match: bool, reason: str)
+    """
+    title_lower = (title or "").lower().strip()
+    url_lower = (url or "").lower().strip()
+    combined_text = f"{title_lower} {url_lower} {(skills_str or '').lower()} {(jd_snippet or '').lower()}"
+
+    # 1. Negative Tech / Role Check
+    for exc in EXCLUDED_ROLES_AND_TECHS:
+        pattern = r'\b' + re.escape(exc) + r'\b'
+        if re.search(pattern, title_lower) or exc in url_lower:
+            # If exc is in title, only permit if PHP or Laravel is explicitly in title too
+            if not any(k in title_lower for k in CORE_KEYWORDS):
+                return False, f"Excluded role/tech: '{exc}'"
+
+    # 2. Positive Core Skill Check
+    has_php_laravel = any(k in title_lower or k in url_lower or k in combined_text for k in CORE_KEYWORDS)
+    if not has_php_laravel:
+        # Check if generic web/software developer role
+        generic_roles = ['backend developer', 'web developer', 'full stack', 'fullstack', 'software developer', 'software engineer']
+        is_generic = any(r in title_lower for r in generic_roles)
+        if not is_generic:
+            return False, "Does not match PHP/Laravel or Web Development target"
+        # If generic role, skills or description MUST have PHP or Laravel
+        if not any(k in combined_text for k in CORE_KEYWORDS):
+            return False, "Generic developer role without PHP/Laravel in skills"
+
+    # 3. Experience Filter
+    exp_source = exp_str or url_lower
+    min_exp, max_exp = parse_experience_range(exp_source)
+    # Candidate has 4 years experience; cannot qualify for 7+, 10+, 17+ yrs roles
+    if min_exp > (CANDIDATE_EXP + 2):
+        return False, f"Experience required too high ({min_exp}-{max_exp} yrs vs candidate {CANDIDATE_EXP} yrs)"
+
+    # 4. Location Filter (if user wants Remote)
+    is_remote_pref = LOCATION in ['remote', 'wfh', 'work from home', 'work-from-home']
+    if is_remote_pref:
+        loc_source = f"{loc_str} {url_lower} {combined_text}".lower()
+        remote_indicators = ['remote', 'wfh', 'work from home', 'hybrid', 'india', 'anywhere']
+        # If none of the remote indicators match
+        if not any(ind in loc_source for ind in remote_indicators):
+            return False, f"Not remote/WFH (Location: '{loc_str}')"
+
+    return True, "Matches candidate profile"
+
+
+# ------------------------------------------------------------
+# Driver & Login Setup
+# ------------------------------------------------------------
 def validate_config():
-    """Check that required configuration values are set."""
-    errors = []
-    if not NAUKRI_EMAIL:
-        errors.append("NAUKRI_EMAIL is not set in .env")
-    if not NAUKRI_PASSWORD:
-        errors.append("NAUKRI_PASSWORD is not set in .env")
-    if not KEYWORDS:
-        errors.append("KEYWORDS is not set in .env (comma-separated job roles)")
-    if not FIRSTNAME:
-        errors.append("FIRSTNAME is not set in .env")
-    if not LASTNAME:
-        errors.append("LASTNAME is not set in .env")
-    if errors:
-        for e in errors:
-            logger.error(e)
-        logger.error("Please copy .env.example to .env and fill in your details.")
+    """Verify that credentials and essential .env settings are present."""
+    if not NAUKRI_EMAIL or not NAUKRI_PASSWORD:
+        logger.error("❌ NAUKRI_EMAIL or NAUKRI_PASSWORD is not set in .env")
         return False
     return True
 
@@ -97,56 +190,53 @@ def create_edge_driver():
     options = webdriver.EdgeOptions()
     options.add_argument("--start-maximized")
     options.add_argument("--disable-notifications")
-    # Uncomment the line below to run in headless mode (no visible browser)
-    # options.add_argument("--headless=new")
+    # To run silently without browser GUI: options.add_argument("--headless=new")
 
     if WEBDRIVER_MANAGER_AVAILABLE:
-        logger.info("Using webdriver-manager to auto-download EdgeDriver...")
+        logger.info("Using webdriver-manager to initialize EdgeDriver...")
         service = EdgeService(EdgeChromiumDriverManager().install())
     elif EDGE_DRIVER_PATH:
         logger.info(f"Using EdgeDriver at: {EDGE_DRIVER_PATH}")
         service = EdgeService(executable_path=EDGE_DRIVER_PATH)
     else:
-        logger.info("No driver path specified; assuming EdgeDriver is in PATH...")
+        logger.info("Assuming EdgeDriver is in system PATH...")
         service = EdgeService()
 
-    driver = webdriver.Edge(service=service, options=options)
-    return driver
+    return webdriver.Edge(service=service, options=options)
 
 
 def login_naukri(driver):
-    """Log in to Naukri.com."""
+    """Log in to Naukri.com with user credentials."""
     logger.info("Logging in to Naukri.com...")
     driver.get('https://login.naukri.com/')
     time.sleep(3)
 
-    # Wait for username field
-    WebDriverWait(driver, 10).until(
-        EC.presence_of_element_located((By.ID, 'usernameField'))
-    )
+    try:
+        WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located((By.ID, 'usernameField'))
+        )
+        uname = driver.find_element(By.ID, 'usernameField')
+        uname.clear()
+        uname.send_keys(NAUKRI_EMAIL)
 
-    uname = driver.find_element(By.ID, 'usernameField')
-    uname.send_keys(NAUKRI_EMAIL)
+        passwd = driver.find_element(By.ID, 'passwordField')
+        passwd.clear()
+        passwd.send_keys(NAUKRI_PASSWORD)
+        passwd.send_keys(Keys.ENTER)
 
-    passwd = driver.find_element(By.ID, 'passwordField')
-    passwd.send_keys(NAUKRI_PASSWORD)
-    passwd.send_keys(Keys.ENTER)
-
-    # Wait for login to complete
-    time.sleep(8)
-    logger.info("Login completed.")
+        time.sleep(7)
+        logger.info("✓ Login completed.")
+    except Exception as e:
+        logger.warning(f"Login notice: {e}. Checking if already logged in...")
 
 
+# ------------------------------------------------------------
+# Search & Job Collection
+# ------------------------------------------------------------
 def build_search_urls():
-    """
-    Build all search URLs for every keyword and page combination.
-    Naukri.com URL formats:
-      - Normal: /{keyword}-jobs-in-{location}
-      - Remote: /{keyword}-jobs?wfhType=2
-    Returns a list of (keyword, url) tuples.
-    """
+    """Build search URLs using user's KEYWORDS and LOCATION."""
     urls = []
-    is_remote = LOCATION.lower().strip() in ['remote', 'wfh', 'work from home', 'work-from-home']
+    is_remote = LOCATION in ['remote', 'wfh', 'work from home', 'work-from-home']
 
     for keyword in KEYWORDS:
         keyword_slug = keyword.lower().replace(' ', '-')
@@ -162,123 +252,118 @@ def build_search_urls():
                 else:
                     url = f"https://www.naukri.com/{keyword_slug}-jobs-{page_num}"
             else:
-                location_slug = LOCATION.lower().replace(' ', '-')
+                loc_slug = LOCATION.replace(' ', '-')
                 if page_num == 1:
-                    url = f"https://www.naukri.com/{keyword_slug}-jobs-in-{location_slug}"
+                    url = f"https://www.naukri.com/{keyword_slug}-jobs-in-{loc_slug}"
                 else:
-                    url = f"https://www.naukri.com/{keyword_slug}-jobs-in-{location_slug}-{page_num}"
+                    url = f"https://www.naukri.com/{keyword_slug}-jobs-in-{loc_slug}-{page_num}"
             urls.append((keyword, url))
     return urls
 
 
-def open_tabs_parallel(driver, search_urls):
-    """
-    Open all search URLs in parallel browser tabs.
-    The first URL opens in the current tab; the rest open in new tabs.
-    Returns the original window handle.
-    """
-    original_window = driver.current_window_handle
-
-    if not search_urls:
-        return original_window
-
-    # Open first URL in current tab
-    keyword, first_url = search_urls[0]
-    logger.info(f"[Tab: Main] Opening: {first_url}")
-    driver.get(first_url)
-    time.sleep(3)
-
-    # Open remaining URLs in new tabs
-    for keyword, url in search_urls[1:]:
-        logger.info(f"[Tab: New] Opening: {url}")
-        driver.switch_to.new_window('tab')
-        driver.get(url)
-        time.sleep(2)
-
-    # Switch back to the original tab
-    driver.switch_to.window(original_window)
-    return original_window
-
-
 def collect_job_links_from_tab(driver, window_handle):
     """
-    Switch to a specific tab, scrape job links from the page.
-    Uses updated Naukri.com selectors (as of 2026 redesign).
-
-    Current HTML structure for job cards:
-        <div class="srp-jobtuple-wrapper" data-job-id="...">
-          <div class="cust-job-tuple layout-wrapper lay-2 sjw__tuple">
-            <div class="row1">
-              <h2><a class="title " href="https://...">Job Title</a></h2>
-            </div>
-          </div>
-        </div>
+    Scrapes job cards from a tab and applies card-level relevance filtering.
+    Only returns URLs that strictly match candidate profile.
     """
-    links = []
+    valid_links = []
     try:
         driver.switch_to.window(window_handle)
-        time.sleep(3)  # Wait for page to fully render
+        time.sleep(3)
 
         soup = BeautifulSoup(driver.page_source, 'html5lib')
-
-        # New selector: find all job tuple wrappers
         job_wrappers = soup.find_all('div', class_='srp-jobtuple-wrapper')
-        logger.info(f"[Tab: {driver.title[:50]}] Found {len(job_wrappers)} job cards (srp-jobtuple-wrapper)")
-
         if not job_wrappers:
-            # Fallback: try the older cust-job-tuple class
             job_wrappers = soup.find_all('div', class_='cust-job-tuple')
-            logger.info(f"[Tab: {driver.title[:50]}] Found {len(job_wrappers)} job cards (cust-job-tuple fallback)")
 
-        for job_wrapper in job_wrappers:
-            # Find the title link - new selector is a.title (class="title ")
-            title_link = job_wrapper.find('a', class_='title')
-            if title_link and title_link.get('href'):
-                href = title_link.get('href')
-                # Ensure full URL
-                if href.startswith('/'):
-                    href = 'https://www.naukri.com' + href
-                links.append(href)
+        logger.info(f"[Tab: {driver.title[:45]}] Found {len(job_wrappers)} job cards")
 
-    except WebDriverException as e:
+        for wrapper in job_wrappers:
+            title_link = wrapper.find('a', class_='title')
+            if not title_link or not title_link.get('href'):
+                continue
+
+            href = title_link.get('href')
+            if href.startswith('/'):
+                href = 'https://www.naukri.com' + href
+
+            card_title = title_link.text.strip() if title_link.text else ""
+
+            # Extract card metadata
+            exp_el = wrapper.find(class_=re.compile(r'exp|expwdth', re.I))
+            card_exp = exp_el.text.strip() if exp_el else ""
+
+            loc_el = wrapper.find(class_=re.compile(r'loc|locWdth', re.I))
+            card_loc = loc_el.text.strip() if loc_el else ""
+
+            tag_els = wrapper.find_all(class_=re.compile(r'tag|chip', re.I))
+            card_skills = " ".join([t.text.strip() for t in tag_els if t.text])
+
+            # Pre-filter at Card Level
+            relevant, reason = is_job_relevant(
+                title=card_title,
+                url=href,
+                exp_str=card_exp,
+                loc_str=card_loc,
+                skills_str=card_skills
+            )
+
+            if relevant:
+                valid_links.append(href)
+            else:
+                logger.debug(f"  ⏭ Filtered out: '{card_title}' -> {reason}")
+
+    except Exception as e:
         logger.warning(f"[Tab] Error reading tab: {e}")
 
-    return links
+    return valid_links
 
 
 def collect_all_jobs_parallel(driver, search_urls):
-    """
-    Open all keyword search pages in parallel tabs and collect job links from each.
-    Returns a deduplicated list of job URLs.
-    """
+    """Open search URLs in parallel tabs and collect pre-filtered relevant job URLs."""
     logger.info("=" * 50)
     logger.info(f"Opening {len(search_urls)} search pages in parallel tabs...")
     logger.info("=" * 50)
 
-    # Open all search URLs in parallel tabs
-    original_window = open_tabs_parallel(driver, search_urls)
+    original_window = driver.current_window_handle
+    if not search_urls:
+        return []
 
-    # Collect job links from each tab
+    # Open first URL in current tab
+    _, first_url = search_urls[0]
+    logger.info(f"[Tab: Main] Opening: {first_url}")
+    driver.get(first_url)
+    time.sleep(2)
+
+    # Open remaining URLs in new tabs
+    for _, url in search_urls[1:]:
+        logger.info(f"[Tab: New] Opening: {url}")
+        driver.switch_to.new_window('tab')
+        driver.get(url)
+        time.sleep(1.5)
+
+    driver.switch_to.window(original_window)
+
     all_links = []
     window_handles = driver.window_handles
-    logger.info(f"Collecting job links from {len(window_handles)} tabs...")
+    logger.info(f"Collecting and filtering relevant jobs from {len(window_handles)} tabs...")
 
     for handle in window_handles:
         tab_links = collect_job_links_from_tab(driver, handle)
         all_links.extend(tab_links)
 
-    # Close all extra tabs and return to main
+    # Close extra tabs
     logger.info("Closing search tabs...")
     for handle in window_handles:
         if handle != original_window:
             try:
                 driver.switch_to.window(handle)
                 driver.close()
-            except WebDriverException:
+            except Exception:
                 pass
     driver.switch_to.window(original_window)
 
-    # Remove duplicates while preserving order
+    # Deduplicate while preserving order
     seen = set()
     unique_links = []
     for link in all_links:
@@ -286,75 +371,184 @@ def collect_all_jobs_parallel(driver, search_urls):
             seen.add(link)
             unique_links.append(link)
 
-    logger.info(f"Total unique job links collected: {len(unique_links)}")
+    logger.info(f"Total relevant job links collected: {len(unique_links)}")
     return unique_links
 
 
+# ------------------------------------------------------------
+# Job Details Extraction & Company External URL
+# ------------------------------------------------------------
 def extract_job_details(driver):
-    """Extract job title and company name from current job page."""
+    """Extract job title, company, experience, location, and skills from current page."""
     title = "Unknown Role"
     company = "Unknown Company"
-    try:
-        title_selectors = [
-            "h1.styles_jd-header-title__rZwM1",
-            "h1[class*='jd-header-title']",
-            "h1.title",
-            ".jd-header-title",
-            "h1",
-        ]
-        for sel in title_selectors:
-            els = driver.find_elements(By.CSS_SELECTOR, sel)
-            if els and els[0].text.strip():
-                title = els[0].text.strip()
-                break
+    exp_req = ""
+    location = ""
+    skills = ""
+    jd_text = ""
 
-        company_selectors = [
-            ".styles_jd-header-comp-name__MvqAI a",
-            "[class*='jd-header-comp-name'] a",
-            ".comp-name",
-            "[class*='comp-name']",
-            ".styles_jd-header-comp-name__MvqAI",
-        ]
-        for sel in company_selectors:
-            els = driver.find_elements(By.CSS_SELECTOR, sel)
-            if els and els[0].text.strip():
-                company = els[0].text.strip()
-                break
+    # 1. Title
+    for sel in ["h1.styles_jd-header-title__rZwM1", "h1[class*='jd-header-title']", "h1.title", ".jd-header-title", "h1"]:
+        els = driver.find_elements(By.CSS_SELECTOR, sel)
+        if els and els[0].text.strip():
+            title = els[0].text.strip()
+            break
+
+    # 2. Company Name
+    for sel in [".styles_jd-header-comp-name__MvqAI a", "[class*='jd-header-comp-name'] a", ".comp-name", "[class*='comp-name']"]:
+        els = driver.find_elements(By.CSS_SELECTOR, sel)
+        if els and els[0].text.strip():
+            company = els[0].text.strip()
+            break
+
+    # 3. Experience & Location badges
+    try:
+        exp_els = driver.find_elements(By.CSS_SELECTOR, "[class*='exp'], .styles_jhc__exp__n2GWp, [class*='jhc__exp']")
+        if exp_els:
+            exp_req = exp_els[0].text.strip()
     except Exception:
         pass
-    return title, company
+
+    try:
+        loc_els = driver.find_elements(By.CSS_SELECTOR, "[class*='loc'], .styles_jhc__loc___Oq4e, [class*='jhc__loc'], [class*='wfh']")
+        if loc_els:
+            location = loc_els[0].text.strip()
+    except Exception:
+        pass
+
+    # 4. Key Skills
+    try:
+        skill_els = driver.find_elements(By.CSS_SELECTOR, "[class*='styles_key-skill'] a, [class*='key-skills'] a, a.chip")
+        if skill_els:
+            skills = ", ".join([s.text.strip() for s in skill_els if s.text.strip()])
+    except Exception:
+        pass
+
+    # 5. JD Snippet
+    try:
+        jd_els = driver.find_elements(By.CSS_SELECTOR, "section[class*='job-desc'], .styles_job-desc-container__txpYf")
+        if jd_els:
+            jd_text = jd_els[0].text[:500].strip()
+    except Exception:
+        pass
+
+    return title, company, exp_req, location, skills, jd_text
+
+
+def extract_company_external_url(driver, company_btn, job_url):
+    """
+    Extracts the real external company career portal URL when 'Apply on company site' is present.
+    Clicks the button, catches the new tab or redirect, captures the URL, closes the tab, and returns.
+    """
+    external_url = "N/A"
+    original_window = driver.current_window_handle
+    existing_handles = set(driver.window_handles)
+
+    # 1. Direct href check on button or anchor
+    try:
+        href = company_btn.get_attribute("href") or company_btn.get_attribute("data-href") or company_btn.get_attribute("data-url")
+        if href and href.startswith("http") and "naukri.com" not in href and "javascript" not in href:
+            return href
+    except Exception:
+        pass
+
+    # 2. Click to trigger redirect / new window
+    try:
+        driver.execute_script("arguments[0].click();", company_btn)
+        time.sleep(3)
+
+        new_handles = set(driver.window_handles) - existing_handles
+        if new_handles:
+            new_tab = list(new_handles)[0]
+            driver.switch_to.window(new_tab)
+            time.sleep(3)  # Wait for tracking redirection
+            dest_url = driver.current_url
+            if dest_url and dest_url.startswith("http") and not dest_url.startswith("about:"):
+                external_url = dest_url
+            driver.close()
+            driver.switch_to.window(original_window)
+        else:
+            # Check if navigated in current tab
+            if driver.current_url != job_url and "naukri.com" not in driver.current_url:
+                external_url = driver.current_url
+                driver.get(job_url)
+                time.sleep(2)
+    except Exception as e:
+        logger.debug(f"Could not extract external URL by clicking: {e}")
+        try:
+            driver.switch_to.window(original_window)
+        except Exception:
+            pass
+
+    return external_url
+
+
+# ------------------------------------------------------------
+# Recruiter Chatbot Questionnaire Handler (Gemini AI)
+# ------------------------------------------------------------
+def find_and_click_chatbot_save_btn(driver):
+    """Locate and click the Save / Submit / Send button inside the chatbot drawer."""
+    save_xpaths = [
+        "//div[contains(@class,'chatbot') or contains(@id,'Chatbot')]//button[contains(translate(normalize-space(.),'SAVE','save'),'save')]",
+        "//div[contains(@class,'chatbot') or contains(@id,'Chatbot')]//button[contains(translate(normalize-space(.),'SUBMIT','submit'),'submit')]",
+        "//div[contains(@class,'chatbot') or contains(@id,'Chatbot')]//button[contains(translate(normalize-space(.),'SEND','send'),'send')]",
+        "//div[contains(@class,'chatbot') or contains(@id,'Chatbot')]//button[contains(translate(normalize-space(.),'NEXT','next'),'next')]",
+        "//button[normalize-space(text())='Save' or text()='Save']",
+        "//button[contains(text(),'Save')]"
+    ]
+    for xpath in save_xpaths:
+        try:
+            btns = driver.find_elements(By.XPATH, xpath)
+            for b in btns:
+                if b.is_displayed() and b.is_enabled():
+                    driver.execute_script("arguments[0].click();", b)
+                    return True
+        except Exception:
+            pass
+
+    # Try CSS
+    for sel in [".sendMsg", "[class*='sendMsg']", "button.saveBtn", "button[class*='save']", "button[type='submit']"]:
+        try:
+            btns = driver.find_elements(By.CSS_SELECTOR, sel)
+            for b in btns:
+                if b.is_displayed() and b.is_enabled():
+                    driver.execute_script("arguments[0].click();", b)
+                    return True
+        except Exception:
+            pass
+
+    return False
 
 
 def handle_chatbot_with_gemini(driver):
     """
-    Handle the chatbot drawer using Gemini AI to answer recruiter questions.
-    Returns True if application completes and drawer closes, False if timed out.
+    Auto-answers recruiter questionnaire using Gemini AI and Aman Dubey's CV.
+    Returns True on completion, False on timeout.
     """
-    import gemini_helper
     logger.info("  🤖 Handling recruiter questionnaire with Gemini AI...")
 
-    for iteration in range(25):  # 25 * 2s = up to 50 seconds
+    for iteration in range(25):  # Up to ~50 seconds
         time.sleep(2)
 
         # Check if drawer has closed (means application finished)
-        containers = driver.find_elements(By.CSS_SELECTOR, "[id*='ChatbotContainer'], .chatbot_Drawer")
+        containers = driver.find_elements(By.CSS_SELECTOR, "[id*='ChatbotContainer'], .chatbot_Drawer, .drawer-wrapper")
         if not containers or not any(c.is_displayed() for c in containers):
             logger.info("  ✓ Questionnaire completed and drawer closed!")
             return True
 
-        # Check for success message or "Application submitted" inside drawer
+        # Check for success indicators
         try:
-            success_indicators = driver.find_elements(
+            success = driver.find_elements(
                 By.XPATH,
                 "//*[contains(text(),'applied successfully') or contains(text(),'Application sent') or contains(text(),'already applied')]"
             )
-            if success_indicators and any(s.is_displayed() for s in success_indicators):
+            if success and any(s.is_displayed() for s in success):
                 logger.info("  ✓ Application confirmation detected inside chatbot!")
                 return True
         except Exception:
             pass
 
-        # 1. Check for Radio Buttons
+        # 1. Radio Options Check
         try:
             radio_containers = driver.find_elements(By.CSS_SELECTOR, ".singleselect-radiobutton-container, [class*='radiobutton-container']")
             visible_rc = [rc for rc in radio_containers if rc.is_displayed()]
@@ -378,23 +572,19 @@ def handle_chatbot_with_gemini(driver):
                             clicked = True
                             break
                     if not clicked and labels:
+                        # Fallback click first valid option
                         driver.execute_script("arguments[0].click();", labels[0])
 
                     time.sleep(1)
-                    # Click save / send button
-                    save_btns = driver.find_elements(By.CSS_SELECTOR, ".sendMsg, [class*='sendMsg'], button[type='submit']")
-                    for sb in save_btns:
-                        if sb.is_displayed():
-                            driver.execute_script("arguments[0].click();", sb)
-                            break
+                    find_and_click_chatbot_save_btn(driver)
                     time.sleep(2)
                     continue
         except Exception as e:
             logger.debug(f"Radio handle error: {e}")
 
-        # 2. Check for Text input (contenteditable div or input)
+        # 2. Text Input Check
         try:
-            text_inputs = driver.find_elements(By.CSS_SELECTOR, ".textArea[contenteditable='true'], div[contenteditable='true'], input[type='text']")
+            text_inputs = driver.find_elements(By.CSS_SELECTOR, ".textArea[contenteditable='true'], div[contenteditable='true'], input[type='text'], textarea")
             active_input = None
             for ti in text_inputs:
                 if ti.is_displayed() and ti.is_enabled():
@@ -409,60 +599,110 @@ def handle_chatbot_with_gemini(driver):
                 answer = gemini_helper.answer_question(q_text)
                 logger.info(f"  💡 Gemini Answer: '{answer}'")
 
-                if answer:
-                    driver.execute_script("""
-                        arguments[0].focus();
-                        arguments[0].innerText = arguments[1];
-                        if (arguments[0].value !== undefined) { arguments[0].value = arguments[1]; }
-                        arguments[0].dispatchEvent(new Event('input', {bubbles: true}));
-                        arguments[0].dispatchEvent(new Event('change', {bubbles: true}));
-                    """, active_input, answer)
-                    time.sleep(0.5)
+                # Insert answer and trigger DOM events
+                driver.execute_script("""
+                    arguments[0].focus();
+                    arguments[0].innerText = arguments[1];
+                    if (arguments[0].value !== undefined) { arguments[0].value = arguments[1]; }
+                    arguments[0].dispatchEvent(new Event('input', {bubbles: true}));
+                    arguments[0].dispatchEvent(new Event('change', {bubbles: true}));
+                """, active_input, answer)
+                time.sleep(0.5)
 
-                    save_btns = driver.find_elements(By.CSS_SELECTOR, ".sendMsg, [class*='sendMsg'], button[type='submit']")
-                    for sb in save_btns:
-                        if sb.is_displayed():
-                            driver.execute_script("arguments[0].click();", sb)
-                            break
-                    time.sleep(2)
-                    continue
+                try:
+                    active_input.send_keys(Keys.SPACE)
+                    active_input.send_keys(Keys.BACK_SPACE)
+                except Exception:
+                    pass
+
+                time.sleep(0.5)
+                clicked = find_and_click_chatbot_save_btn(driver)
+                if not clicked:
+                    try:
+                        active_input.send_keys(Keys.ENTER)
+                    except Exception:
+                        pass
+                time.sleep(2)
+                continue
         except Exception as e:
             logger.debug(f"Text handle error: {e}")
 
-        # 3. Check for Save/Next/Submit button in drawer
-        try:
-            action_btns = driver.find_elements(By.XPATH, "//div[contains(@class,'chatbot')]//button[contains(text(),'Save') or contains(text(),'Submit') or contains(text(),'Next')]")
-            for ab in action_btns:
-                if ab.is_displayed() and ab.is_enabled():
-                    driver.execute_script("arguments[0].click();", ab)
-                    time.sleep(2)
-                    break
-        except Exception:
-            pass
+        # 3. Action Buttons check (Save/Next/Submit)
+        find_and_click_chatbot_save_btn(driver)
 
     return False
 
 
+# ------------------------------------------------------------
+# CSV Persistence - ONLY TWO CSV FILES
+# ------------------------------------------------------------
+def load_already_processed_urls():
+    """Load all URLs already present in applied_jobs.csv or manual_apply_jobs.csv."""
+    urls = set()
+    for path in [APPLIED_CSV, MANUAL_CSV]:
+        if os.path.exists(path):
+            try:
+                df = pd.read_csv(path)
+                for col in ['Job URL', 'Job Link', 'Naukri URL']:
+                    if col in df.columns:
+                        urls.update(df[col].dropna().astype(str).tolist())
+            except Exception:
+                pass
+    return urls
+
+
+def save_applied_record(record):
+    """Save successfully applied job into applied_jobs.csv."""
+    df_new = pd.DataFrame([record])
+    if os.path.exists(APPLIED_CSV):
+        try:
+            df_existing = pd.read_csv(APPLIED_CSV)
+            df_combined = pd.concat([df_existing, df_new], ignore_index=True)
+            df_combined.drop_duplicates(subset=['Job URL'], keep='last', inplace=True)
+            df_combined.to_csv(APPLIED_CSV, index=False)
+        except Exception:
+            df_new.to_csv(APPLIED_CSV, index=False)
+    else:
+        df_new.to_csv(APPLIED_CSV, index=False)
+
+
+def save_manual_record(record):
+    """Save manual / external / failed job into manual_apply_jobs.csv."""
+    df_new = pd.DataFrame([record])
+    if os.path.exists(MANUAL_CSV):
+        try:
+            df_existing = pd.read_csv(MANUAL_CSV)
+            df_combined = pd.concat([df_existing, df_new], ignore_index=True)
+            df_combined.drop_duplicates(subset=['Job URL'], keep='last', inplace=True)
+            df_combined.to_csv(MANUAL_CSV, index=False)
+        except Exception:
+            df_new.to_csv(MANUAL_CSV, index=False)
+    else:
+        df_new.to_csv(MANUAL_CSV, index=False)
+
+
+# ------------------------------------------------------------
+# Core Application Engine
+# ------------------------------------------------------------
 def apply_to_jobs(driver, job_links):
     """
-    Visit each job link and attempt to apply.
-    - If direct 1-click apply works on Naukri -> marks as Applied.
-    - If it's 'Apply on company site' (external link), or requires questionnaire,
-      or button is missing -> marks as Manual Apply and saves with title, company,
-      URL, and reason so you can apply manually.
+    Visits each job link, checks relevance, and executes application:
+    - Direct Apply -> applies and saves to applied_jobs.csv
+    - Chatbot Questionnaire -> answers via Gemini and saves to applied_jobs.csv
+    - Apply on company site -> extracts external URL and saves to manual_apply_jobs.csv
+    - Fails/Quota -> saves to manual_apply_jobs.csv with clear reason
     """
     applied = 0
     manual_count = 0
-    applied_records = []
-    manual_apply_records = []
+    skipped_count = 0
 
     logger.info("=" * 50)
-    logger.info(f"Starting job applications (max: {MAX_APPLICATIONS})...")
+    logger.info(f"Starting job evaluation & applications (Max limit: {MAX_APPLICATIONS})...")
     logger.info("=" * 50)
 
     for i, link in enumerate(job_links, 1):
         if applied >= MAX_APPLICATIONS:
-            logger.info(f"Reached max application limit ({MAX_APPLICATIONS}). Stopping.")
+            logger.info(f"Reached maximum application limit ({MAX_APPLICATIONS}). Stopping.")
             break
 
         logger.info(f"[{i}/{len(job_links)}] Visiting: {link}")
@@ -472,51 +712,73 @@ def apply_to_jobs(driver, job_links):
         except WebDriverException as e:
             logger.warning(f"  ✗ Failed to load page: {e}")
             manual_count += 1
-            manual_apply_records.append({
+            save_manual_record({
                 'Job Title': 'Unknown Role',
                 'Company Name': 'Unknown Company',
                 'Job URL': link,
-                'Reason': f'Failed to load page: {e}',
+                'Company External URL': 'N/A',
+                'Location': 'N/A',
+                'Experience': 'N/A',
+                'Reason': f'Page Load Error: {str(e)[:100]}',
                 'Checked At': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             })
             continue
 
-        title, company = extract_job_details(driver)
-        logger.info(f"  Job: {title} | Company: {company}")
+        title, company, exp_req, location, skills, jd_text = extract_job_details(driver)
+        logger.info(f"  Job: {title} | Company: {company} | Exp: {exp_req or 'N/A'} | Loc: {location or 'N/A'}")
 
-        # Check if already applied
+        # Page-Level Relevance Verification
+        is_rel, reason = is_job_relevant(
+            title=title,
+            url=link,
+            exp_str=exp_req,
+            loc_str=location,
+            skills_str=skills,
+            jd_snippet=jd_text
+        )
+
+        if not is_rel:
+            logger.info(f"  ⏭ Skipping job: '{title}' - {reason}")
+            skipped_count += 1
+            continue
+
+        # Check if already applied previously
         try:
-            already_applied_els = driver.find_elements(
+            already_applied = driver.find_elements(
                 By.XPATH,
                 "//*[contains(text(),'Already applied') or contains(text(),'Already Applied') or contains(text(),'Applied on')]"
             )
-            if already_applied_els and any(el.is_displayed() for el in already_applied_els):
+            if already_applied and any(el.is_displayed() for el in already_applied):
                 logger.info("  ℹ Already applied to this job previously. Skipping.")
                 continue
         except Exception:
             pass
 
-        # Check if button is "Apply on company site"
-        # Since this button redirects to company's external career portal (Workday/Greenhouse/etc.),
-        # bot cannot fill external ATS portals. So user must apply manually.
+        # Case 1: 'Apply on company site' detected
         company_site_btns = driver.find_elements(
             By.XPATH,
-            "//button[contains(text(),'Apply on company site')] | //button[@id='company-site-button'] | //button[contains(@class,'company-site-button')]"
+            "//button[contains(text(),'Apply on company site')] | //button[@id='company-site-button'] | //button[contains(@class,'company-site-button')] | //a[contains(text(),'Apply on company site')]"
         )
         if company_site_btns and any(btn.is_displayed() for btn in company_site_btns):
             logger.info("  ⚠ 'Apply on company site' detected (Redirects to external company career page).")
-            logger.info("  -> Added to manual_apply_jobs.csv for manual application.")
+            ext_url = extract_company_external_url(driver, company_site_btns[0], link)
+            logger.info(f"  🔗 Captured Company Website URL: {ext_url}")
+            logger.info("  -> Added to manual_apply_jobs.csv for quick manual application.")
+
             manual_count += 1
-            manual_apply_records.append({
+            save_manual_record({
                 'Job Title': title,
                 'Company Name': company,
                 'Job URL': link,
+                'Company External URL': ext_url,
+                'Location': location or LOCATION,
+                'Experience': exp_req,
                 'Reason': 'External Company Portal (Apply on company site)',
                 'Checked At': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             })
             continue
 
-        # Look for direct "Apply" button (Naukri 1-click apply)
+        # Case 2: Direct Naukri Apply Button
         direct_apply_btns = driver.find_elements(
             By.XPATH,
             "//button[text()='Apply' or contains(text(),'Apply on Naukri') or (contains(text(),'Apply') and not(contains(text(),'company')))]"
@@ -528,269 +790,194 @@ def apply_to_jobs(driver, job_links):
                 break
 
         if not clickable_btn:
-            logger.warning("  ✗ No direct Apply button found.")
+            logger.warning("  ✗ No direct Apply button found on page.")
             manual_count += 1
-            manual_apply_records.append({
+            save_manual_record({
                 'Job Title': title,
                 'Company Name': company,
                 'Job URL': link,
+                'Company External URL': 'N/A',
+                'Location': location or LOCATION,
+                'Experience': exp_req,
                 'Reason': 'No Apply Button Found / Expired',
                 'Checked At': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             })
             continue
 
-        # Attempt to click direct Apply
+        # Click Direct Apply
         try:
             driver.execute_script("arguments[0].click();", clickable_btn)
             time.sleep(3)
         except Exception as e:
             logger.warning(f"  ✗ Error clicking Apply button: {e}")
             manual_count += 1
-            manual_apply_records.append({
+            save_manual_record({
                 'Job Title': title,
                 'Company Name': company,
                 'Job URL': link,
-                'Reason': f'Error clicking Apply: {e}',
+                'Company External URL': 'N/A',
+                'Location': location or LOCATION,
+                'Experience': exp_req,
+                'Reason': f'Click Apply Error: {str(e)[:100]}',
                 'Checked At': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             })
             continue
 
-        # Check for daily quota expired
+        # Check for Daily Quota Expired
         try:
-            quota_el = driver.find_elements(By.XPATH, "//*[contains(text(),'daily quota has been expired')]")
-            if quota_el and any(q.is_displayed() for q in quota_el):
-                logger.info("Daily quota expired. Stopping.")
-                manual_apply_records.append({
+            quota_els = driver.find_elements(By.XPATH, "//*[contains(text(),'daily quota has been expired')]")
+            if quota_els and any(q.is_displayed() for q in quota_els):
+                logger.warning("❌ Naukri daily application quota expired! Stopping execution.")
+                save_manual_record({
                     'Job Title': title,
                     'Company Name': company,
                     'Job URL': link,
-                    'Reason': 'Daily Quota Expired',
+                    'Company External URL': 'N/A',
+                    'Location': location or LOCATION,
+                    'Experience': exp_req,
+                    'Reason': 'Naukri Daily Quota Expired',
                     'Checked At': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
                 })
                 break
         except Exception:
             pass
 
-        # Handle custom first/last name fields if present
+        # Handle custom first/last name fields if prompted
         try:
             fn_fields = driver.find_elements(By.XPATH, "//input[@id='CUSTOM-FIRSTNAME']")
             if fn_fields and fn_fields[0].is_displayed():
                 fn_fields[0].clear()
                 fn_fields[0].send_keys(FIRSTNAME)
-                logger.info("  Filled custom first name field")
-        except Exception:
-            pass
 
-        try:
             ln_fields = driver.find_elements(By.XPATH, "//input[@id='CUSTOM-LASTNAME']")
             if ln_fields and ln_fields[0].is_displayed():
                 ln_fields[0].clear()
                 ln_fields[0].send_keys(LASTNAME)
-                logger.info("  Filled custom last name field")
         except Exception:
             pass
 
-        # Handle "Submit and Apply" if present
+        # Handle "Submit and Apply" button if prompted
         try:
             submit_btn = driver.find_elements(By.XPATH, "//*[text()='Submit and Apply' or contains(text(),'Submit & Apply')]")
             if submit_btn and submit_btn[0].is_displayed():
                 driver.execute_script("arguments[0].click();", submit_btn[0])
-                logger.info("  Clicked 'Submit and Apply'")
                 time.sleep(2)
         except Exception:
             pass
 
-        # Check if chatbot questionnaire or complex form is blocking
+        # Check for Recruiter Questionnaire Drawer
         try:
             chatbot_open = driver.find_elements(By.CSS_SELECTOR, "[id*='ChatbotContainer'], .chatbot_Drawer, .drawer-wrapper")
             if chatbot_open and any(c.is_displayed() for c in chatbot_open):
-                import gemini_helper
-                if gemini_helper.is_gemini_available():
-                    logger.info("  🤖 Recruiter questionnaire detected! Auto-answering with Gemini AI...")
-                    if handle_chatbot_with_gemini(driver):
-                        applied += 1
-                        applied_records.append({
-                            'Job Title': title,
-                            'Company Name': company,
-                            'Job URL': link,
-                            'Applied At': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-                        })
-                        logger.info(f"  ✓ Applied successfully with Gemini AI! (Total Applied: {applied})")
-                        time.sleep(2)
-                        continue
-                    else:
-                        logger.warning("  ✗ Gemini timed out or could not complete questionnaire.")
-                        manual_count += 1
-                        manual_apply_records.append({
-                            'Job Title': title,
-                            'Company Name': company,
-                            'Job URL': link,
-                            'Reason': 'Chatbot Questionnaire (Gemini timeout/incomplete)',
-                            'Checked At': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-                        })
-                        continue
-                else:
-                    logger.info("  ℹ Chatbot / Questionnaire required (Add GEMINI_API_KEY in .env to auto-answer).")
-                    logger.info("  -> Saved to manual_apply_jobs.csv for manual completion.")
-                    manual_count += 1
-                    manual_apply_records.append({
+                logger.info("  🤖 Recruiter questionnaire detected! Auto-answering with Gemini AI...")
+                if handle_chatbot_with_gemini(driver):
+                    applied += 1
+                    save_applied_record({
                         'Job Title': title,
                         'Company Name': company,
                         'Job URL': link,
-                        'Reason': 'Recruiter Questionnaire / Chatbot Form Required (No Gemini Key)',
+                        'Location': location or LOCATION,
+                        'Experience': exp_req,
+                        'Application Type': 'Recruiter Questionnaire (Gemini AI)',
+                        'Applied At': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                    })
+                    logger.info(f"  ✓ Applied successfully with Gemini AI! (Total Applied: {applied})")
+                    time.sleep(2)
+                    continue
+                else:
+                    logger.warning("  ✗ Questionnaire timed out or could not complete.")
+                    manual_count += 1
+                    save_manual_record({
+                        'Job Title': title,
+                        'Company Name': company,
+                        'Job URL': link,
+                        'Company External URL': 'N/A',
+                        'Location': location or LOCATION,
+                        'Experience': exp_req,
+                        'Reason': 'Chatbot Questionnaire incomplete',
                         'Checked At': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
                     })
                     continue
         except Exception as e:
             logger.debug(f"Chatbot handler error: {e}")
 
-        # If we got here, application was successful!
+        # Direct application succeeded!
         applied += 1
-        applied_records.append({
+        save_applied_record({
             'Job Title': title,
             'Company Name': company,
             'Job URL': link,
+            'Location': location or LOCATION,
+            'Experience': exp_req,
+            'Application Type': 'Direct Apply (1-Click)',
             'Applied At': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         })
         logger.info(f"  ✓ Applied directly! (Total Applied: {applied})")
         time.sleep(2)
 
-    return applied, manual_count, applied_records, manual_apply_records
+    return applied, manual_count, skipped_count
 
 
-def save_results(applied_records, manual_apply_records):
-    """
-    Save applied jobs and manual apply jobs to separate CSVs.
-    Appends to existing CSVs if they already exist, avoiding duplicates.
-    """
-    manual_csv = "manual_apply_jobs.csv"
-    applied_csv = "applied_jobs.csv"
-
-    # Save manual apply jobs
-    if manual_apply_records:
-        df_new_manual = pd.DataFrame(manual_apply_records)
-        if os.path.exists(manual_csv):
-            try:
-                df_existing = pd.read_csv(manual_csv)
-                df_combined = pd.concat([df_existing, df_new_manual], ignore_index=True)
-                df_combined.drop_duplicates(subset=['Job URL'], keep='last', inplace=True)
-                df_combined.to_csv(manual_csv, index=False)
-            except Exception:
-                df_new_manual.to_csv(manual_csv, index=False)
-        else:
-            df_new_manual.to_csv(manual_csv, index=False)
-        logger.info(f"📋 Manual apply jobs saved to {manual_csv} ({len(manual_apply_records)} jobs)")
-
-    # Save successfully applied jobs
-    if applied_records:
-        df_new_applied = pd.DataFrame(applied_records)
-        if os.path.exists(applied_csv):
-            try:
-                df_existing = pd.read_csv(applied_csv)
-                df_combined = pd.concat([df_existing, df_new_applied], ignore_index=True)
-                df_combined.drop_duplicates(subset=['Job URL'], keep='last', inplace=True)
-                df_combined.to_csv(applied_csv, index=False)
-            except Exception:
-                df_new_applied.to_csv(applied_csv, index=False)
-        else:
-            df_new_applied.to_csv(applied_csv, index=False)
-        logger.info(f"✅ Successfully applied jobs saved to {applied_csv} ({len(applied_records)} jobs)")
-
-    # Also maintain legacy naukriapplied.csv for backward compatibility
-    try:
-        legacy_csv = "naukriapplied.csv"
-        applied_urls = [r['Job URL'] for r in applied_records]
-        failed_urls = [r['Job URL'] for r in manual_apply_records]
-        df_legacy = pd.DataFrame({
-            'passed': pd.Series(applied_urls),
-            'failed': pd.Series(failed_urls)
-        })
-        df_legacy.to_csv(legacy_csv, index=False)
-    except Exception:
-        pass
-
-
-def load_already_processed_urls():
-    """Load all URLs already saved in applied_jobs.csv and manual_apply_jobs.csv to skip re-processing."""
-    urls = set()
-    for filename in ["applied_jobs.csv", "manual_apply_jobs.csv", "naukriapplied.csv"]:
-        if os.path.exists(filename):
-            try:
-                df = pd.read_csv(filename)
-                for col in ['Job URL', 'passed', 'failed']:
-                    if col in df.columns:
-                        urls.update(df[col].dropna().astype(str).tolist())
-            except Exception:
-                pass
-    return urls
-
-
+# ------------------------------------------------------------
+# Main Function
+# ------------------------------------------------------------
 def main():
-    """Main entry point for the bot."""
-    logger.info("=" * 50)
-    logger.info("Naukri Auto-Apply Bot (Edge Edition - 2026 Update)")
-    logger.info("=" * 50)
+    logger.info("=" * 60)
+    logger.info("Naukri Auto-Apply Bot - Unified Master Edition (2026)")
+    logger.info("=" * 60)
 
     if not validate_config():
         return
 
-    logger.info(f"Keywords: {KEYWORDS}")
-    logger.info(f"Location: {LOCATION or 'Anywhere'}")
-    logger.info(f"Max applications: {MAX_APPLICATIONS}")
-    logger.info(f"Pages per keyword: {PAGES_PER_KEYWORD}")
+    logger.info(f"Target Keywords:       {KEYWORDS}")
+    logger.info(f"Target Location:       {LOCATION or 'Anywhere'}")
+    logger.info(f"Candidate Experience:  {CANDIDATE_EXP} years")
+    logger.info(f"Max Applications:      {MAX_APPLICATIONS}")
+    logger.info(f"Pages per Keyword:     {PAGES_PER_KEYWORD}")
 
     driver = None
     try:
-        # Initialize browser
         driver = create_edge_driver()
-
-        # Login
         login_naukri(driver)
 
-        # Build all search URLs
         search_urls = build_search_urls()
-        logger.info(f"Total search pages to open: {len(search_urls)}")
+        logger.info(f"Total search pages to process: {len(search_urls)}")
 
-        # Collect all job links in parallel (multi-tab)
+        # Scrape and filter relevant job links
         job_links = collect_all_jobs_parallel(driver, search_urls)
 
         if not job_links:
-            logger.warning("No job links found. Check your keywords and location.")
+            logger.warning("No relevant job links found matching your preferences.")
             return
 
-        # Smart Filter: Skip already processed jobs
+        # Skip already processed jobs from both CSVs
         processed_urls = load_already_processed_urls()
         fresh_job_links = [l for l in job_links if l not in processed_urls]
-        logger.info(f"Total collected: {len(job_links)} | Already processed previously: {len(job_links) - len(fresh_job_links)} | Fresh new jobs to process: {len(fresh_job_links)}")
+        logger.info(f"Total collected: {len(job_links)} | Already processed previously: {len(job_links) - len(fresh_job_links)} | Fresh jobs to evaluate: {len(fresh_job_links)}")
 
         if not fresh_job_links:
-            logger.info("✨ All collected jobs have already been processed in previous runs!")
-            logger.info("💡 Tip: Increase PAGES_PER_KEYWORD (e.g. 4 or 5) or add new KEYWORDS in .env to discover more jobs.")
+            logger.info("✨ All matching jobs have already been processed in previous runs!")
+            logger.info("💡 Tip: Increase PAGES_PER_KEYWORD (e.g. 3 or 4) to discover more jobs.")
             return
 
-        # Apply to jobs
-        applied, manual_count, applied_records, manual_apply_records = apply_to_jobs(driver, fresh_job_links)
+        applied, manual_count, skipped_count = apply_to_jobs(driver, fresh_job_links)
 
-        # Save results
-        save_results(applied_records, manual_apply_records)
-
-        # Summary
-        logger.info("=" * 50)
-        logger.info("APPLICATION SUMMARY")
-        logger.info(f"  Successfully applied: {applied}")
-        logger.info(f"  Needs Manual Apply:  {manual_count}")
-        logger.info(f"  Total processed:     {applied + manual_count}")
-        logger.info(f"  Applied jobs saved:  applied_jobs.csv")
-        logger.info(f"  Manual jobs saved:   manual_apply_jobs.csv")
-        logger.info("=" * 50)
+        logger.info("=" * 60)
+        logger.info("EXECUTION SUMMARY")
+        logger.info(f"  Successfully Applied:        {applied}")
+        logger.info(f"  Manual / External Portals:   {manual_count}")
+        logger.info(f"  Skipped (Non-matching):      {skipped_count}")
+        logger.info(f"  Applied CSV File:            {APPLIED_CSV}")
+        logger.info(f"  Manual Apply CSV File:       {MANUAL_CSV}")
+        logger.info("=" * 60)
 
     except Exception as e:
-        logger.exception(f"An unexpected error occurred: {e}")
+        logger.exception(f"An unexpected error occurred during execution: {e}")
     finally:
         if driver:
             try:
                 driver.quit()
-                logger.info("Browser closed.")
+                logger.info("Browser closed safely.")
             except Exception:
                 pass
 

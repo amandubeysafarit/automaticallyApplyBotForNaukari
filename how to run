@@ -1,5 +1,17 @@
+# ==============================================================
+# Naukri Auto-Apply Bot - How To Run (Unified Single Command)
+# ==============================================================
+
+Sirf ek hi command chalana hai:
+
 python Naukri-Edge.py
 
-python auto_apply_external.py
-
-python ai_final_auto_apply.py
+# Yeh command kya karega:
+# 1. Aapke .env preferences (KEYWORDS, LOCATION=remote, etc.) ke mutabiq jobs khojega.
+# 2. Bekar / irrelevant jobs (Java, Spring Boot, ERP, .NET, Architect, over-experience) ko automatically skip karega.
+# 3. Direct Naukri 1-click jobs ko automatically apply karega.
+# 4. Recruiter chatbot / questionnaire aane par Gemini AI aur aapki CV context se auto-answer karke apply karega.
+# 5. 'Apply on company site' aane par company ki real website career URL extract karega.
+# 6. Sirf 2 clean CSV files maintain karega:
+#    - applied_jobs.csv       (Safal applications ki report)
+#    - manual_apply_jobs.csv  (Company site URL ke saath manual apply aur failed jobs)
