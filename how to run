@@ -15,3 +15,5 @@ python Naukri-Edge.py
 # 6. Sirf 2 clean CSV files maintain karega:
 #    - applied_jobs.csv       (Safal applications ki report)
 #    - manual_apply_jobs.csv  (Company site URL ke saath manual apply aur failed jobs)
+
+hioi
