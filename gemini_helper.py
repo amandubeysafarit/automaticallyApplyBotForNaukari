@@ -2,12 +2,15 @@
 Gemini AI Assistant for Naukri Application Questionnaires
 ==========================================================
 Uses Google Gemini to answer recruiter chatbot questions (radio options & free text)
-with automatic fallback to candidate profile details.
+with candidate context (Shraddha Dwivedi) and automatic fallback.
 """
 
 import os
+import re
 import logging
 import warnings
+import zipfile
+import xml.etree.ElementTree as ET
 from dotenv import load_dotenv
 
 # Suppress deprecation warnings from legacy package
@@ -16,32 +19,66 @@ warnings.filterwarnings('ignore', category=FutureWarning)
 load_dotenv()
 logger = logging.getLogger(__name__)
 
-# Candidate profile details from .env or defaults (Derived directly from aman_dubey_cv.docx)
-FIRSTNAME = os.getenv('FIRSTNAME', 'Aman')
-LASTNAME = os.getenv('LASTNAME', 'Dubey')
+# Candidate profile details from .env or defaults (Derived directly from Shraddha Dwivedi's CV)
+FIRSTNAME = os.getenv('FIRSTNAME', 'Shraddha')
+LASTNAME = os.getenv('LASTNAME', 'Dwivedi')
 TOTAL_EXPERIENCE = os.getenv('TOTAL_EXPERIENCE', '4 years')
 RELEVANT_EXPERIENCE = os.getenv('RELEVANT_EXPERIENCE', '4 years')
-CURRENT_CTC = os.getenv('CURRENT_CTC', '4.5 LPA')
-EXPECTED_CTC = os.getenv('EXPECTED_CTC', '7 LPA')
+CURRENT_CTC = os.getenv('CURRENT_CTC', '6 LPA')
+EXPECTED_CTC = os.getenv('EXPECTED_CTC', '10 LPA')
 NOTICE_PERIOD = os.getenv('NOTICE_PERIOD', '15-30 days')
-CURRENT_LOCATION = os.getenv('CURRENT_LOCATION', 'Indore, M.P.')
-KEY_SKILLS = os.getenv('KEY_SKILLS', 'PHP, Laravel, MySQL, MongoDB, JavaScript, jQuery, Alpine.js, CodeIgniter, Pest PHP, Git, REST API, Linux')
+CURRENT_LOCATION = os.getenv('CURRENT_LOCATION', 'Bangalore')
+CURRENT_COMPANY = os.getenv('CURRENT_COMPANY', 'Highpoints Technologies Pvt Ltd')
+PHONE = os.getenv('PHONE', '+91-7610557288')
+EMAIL = os.getenv('NAUKRI_EMAIL', 'shraddha.it@yahoo.com')
+KEY_SKILLS = os.getenv('KEY_SKILLS', 'OFSAA, SQL, PL/SQL, Oracle 12c, Python, Linux/Unix, Database Development, Performance Tuning, Jasper Reports')
 
-# Load full CV text if file exists
-CV_FILE_PATH = os.path.join(os.path.dirname(__file__), "aman_dubey_cv.txt")
+# Auto-locate and load CV text
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+POSSIBLE_CV_FILES = [
+    os.path.join(BASE_DIR, "shraddha_dwivedi_cv.txt"),
+    os.path.join(BASE_DIR, "Shraddha_Dwivedi_cv.txt"),
+    os.path.join(BASE_DIR, "Shraddha_Dwivedi_cv.docx"),
+    os.path.join(BASE_DIR, "shraddha_dwivedi_cv.docx")
+]
+
 FULL_CV_TEXT = ""
-if os.path.exists(CV_FILE_PATH):
+
+def _extract_text_from_docx(file_path):
     try:
-        with open(CV_FILE_PATH, "r", encoding="utf-8") as f:
-            FULL_CV_TEXT = f.read().strip()
+        with zipfile.ZipFile(file_path) as z:
+            xml_content = z.read('word/document.xml')
+        tree = ET.fromstring(xml_content)
+        texts = []
+        for elem in tree.iter():
+            if elem.tag.endswith('}t'):
+                if elem.text:
+                    texts.append(elem.text)
+            elif elem.tag.endswith('}p'):
+                texts.append('\n')
+        return ''.join(texts).strip()
     except Exception as e:
-        logger.warning(f"Could not read CV file: {e}")
+        logger.warning(f"Could not extract docx text: {e}")
+        return ""
+
+for cv_path in POSSIBLE_CV_FILES:
+    if os.path.exists(cv_path):
+        try:
+            if cv_path.endswith('.txt'):
+                with open(cv_path, "r", encoding="utf-8") as f:
+                    FULL_CV_TEXT = f.read().strip()
+            elif cv_path.endswith('.docx') and not FULL_CV_TEXT:
+                FULL_CV_TEXT = _extract_text_from_docx(cv_path)
+            if FULL_CV_TEXT:
+                break
+        except Exception as e:
+            logger.warning(f"Could not read CV file {cv_path}: {e}")
 
 # Initialize Gemini Model if key is present
 _model = None
 _model_name_cached = None
 
-MODELS_TO_TRY = ['gemini-3.8-flash', 'gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-flash-latest']
+MODELS_TO_TRY = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-flash-latest']
 
 
 def get_gemini_model():
@@ -61,16 +98,14 @@ def get_gemini_model():
         for model_name in MODELS_TO_TRY:
             try:
                 candidate_model = genai.GenerativeModel(model_name)
-                # Quick check
                 _model = candidate_model
                 _model_name_cached = model_name
-                logger.info(f"🤖 Gemini AI initialized with model '{model_name}' and Aman Dubey's CV!")
+                logger.info(f"🤖 Gemini AI initialized with model '{model_name}' and Shraddha Dwivedi's CV!")
                 return _model
             except Exception:
                 continue
 
-        # If none worked, default to first
-        _model = genai.GenerativeModel('gemini-3.8-flash')
+        _model = genai.GenerativeModel('gemini-2.5-flash')
         return _model
     except Exception as e:
         logger.warning(f"Could not initialize Gemini: {e}")
@@ -87,34 +122,42 @@ def get_candidate_context():
     """Build candidate context for Gemini using full CV details."""
     if FULL_CV_TEXT:
         return f"""
-Candidate Full Resume & Profile (Aman Dubey):
+Candidate Full Resume & Profile (Shraddha Dwivedi):
 ==================================================
 {FULL_CV_TEXT}
 ==================================================
 Additional Application Details:
+- Candidate Name: {FIRSTNAME} {LASTNAME}
+- Target Roles: SQL/PLSQL Developer, OFSAA Developer, Oracle Database Developer, Application Developer
+- Current Company: {CURRENT_COMPANY}
 - Current CTC: {CURRENT_CTC}
 - Expected CTC: {EXPECTED_CTC}
 - Notice Period: {NOTICE_PERIOD}
 - Location: {CURRENT_LOCATION}
 - Comfortable working remotely: Yes, 100%
-- Open to relocate: Yes / Remote / Hybrid
+- Open to relocate: Yes / Bangalore / Hyderabad / Pune / Remote / Hybrid
 - Key Skills: {KEY_SKILLS}
+- Education: Bachelor of Engineering (B.E.) in Information Technology (Govt. Indira Gandhi Engineering College, Sagar, 2020)
+- Phone: {PHONE}
+- Email: {EMAIL}
 """
     return f"""
 Candidate Profile:
 - Full Name: {FIRSTNAME} {LASTNAME}
-- Target Role: Senior PHP Laravel Developer
+- Target Role: SQL/PLSQL Developer, OFSAA Developer, Oracle Database Developer
 - Total Experience: {TOTAL_EXPERIENCE}
-- Relevant Laravel/PHP Experience: {RELEVANT_EXPERIENCE}
+- Relevant Experience: {RELEVANT_EXPERIENCE}
 - Current CTC: {CURRENT_CTC}
 - Expected CTC: {EXPECTED_CTC}
 - Notice Period: {NOTICE_PERIOD}
-- Current Company: Webwiders Software Solutions Pvt Ltd, Indore
+- Current Company: {CURRENT_COMPANY}
 - Location: {CURRENT_LOCATION}
 - Willing to relocate: Yes / Open to Remote and Hybrid
 - Key Skills: {KEY_SKILLS}
 - Education: Bachelor of Engineering (B.E.) in Information Technology (2020)
 - Comfortable working remotely: Yes, 100%
+- Phone: {PHONE}
+- Email: {EMAIL}
 """
 
 
@@ -136,8 +179,8 @@ def get_fallback_answer(question_text, options=None):
 
         # Experience
         if any(w in q for w in ['experience', 'exp', 'years']):
-            # Aman has 4 years experience
-            for target in ['4', '3 to 5', '3-5', 'more than 2', 'more than 3', '1 to 2', '2 to 4', '4 to 6']:
+            # Shraddha has 4 years experience
+            for target in ['4', '3 to 5', '3-5', 'more than 2', 'more than 3', '2 to 4', '4 to 6']:
                 for opt in options:
                     if target in opt.lower():
                         return opt
@@ -151,7 +194,7 @@ def get_fallback_answer(question_text, options=None):
 
         # CTC
         if any(w in q for w in ['ctc', 'salary']):
-            for target in ['4-6', '5-7', '6-8', '4.5', '7']:
+            for target in ['6-8', '5-7', '6-10', '6 to 10', '8-10', '6', '10']:
                 for opt in options:
                     if target in opt.lower():
                         return opt
@@ -182,7 +225,7 @@ def get_fallback_answer(question_text, options=None):
         if any(w in q for w in ['degree', 'qualification', 'education']):
             return 'B.E. Information Technology'
         if any(w in q for w in ['company', 'current employer', 'organization']):
-            return 'Webwiders Software Solutions'
+            return CURRENT_COMPANY
         if any(w in q for w in ['tools', 'technologies', 'skills']):
             return KEY_SKILLS
         return 'Yes'
@@ -213,7 +256,7 @@ Available Options:
 {chr(10).join([f"- {opt}" for opt in options])}
 
 Instructions:
-Pick the BEST single option from the Available Options list that best represents the candidate Aman Dubey.
+Pick the BEST single option from the Available Options list that best represents candidate Shraddha Dwivedi.
 Output ONLY the exact option text without any extra words, quotes, or markdown.
 """
             response = model.generate_content(prompt)
@@ -235,7 +278,7 @@ The recruiter asked the following question on a job application:
 Question: "{question_text}"
 
 Instructions:
-Provide a very short, direct answer suitable for a job application text input field (e.g., "4", "4 years", "15-30 days", "Yes", "4.5 LPA", "Indore, M.P.", etc.).
+Provide a very short, direct answer suitable for a job application text input field (e.g., "4", "4 years", "15-30 days", "Yes", "6 LPA", "Bangalore", etc.) representing candidate Shraddha Dwivedi.
 Do NOT explain. Do NOT add extra sentences. Output ONLY the concise answer value.
 """
             response = model.generate_content(prompt)

@@ -1,0 +1,213 @@
+
+
+
+Shraddha Dwivedi
+Application Developer
+dshraddha.cs@gmail.com | +91-7610557288 | LinkedIn
+
+Summary
+Results-oriented SQL/PLSQL Developer bringing 4 years of experience in architecting, optimizing, and managing complex database solutions across the healthcare and financial sectors. Highly skilled in Oracle 12c, PL/SQL, Python automation, and Linux/Unix administration. Demonstrated success in refining data architectures, drastically cutting retrieval times, and spearheading mission-critical projects including OFSDF, EMR, and Blood Bank Management systems. Eager to apply advanced technical proficiencies to boost data performance and foster innovation within a forward-thinking team.
+Work Experience
+
+08/2024 – Present
+Bangalore, India
+Highpoints Technologies Pvt Ltd
+Application Developer
+Role Overview: Served as an Application Developer focused on database optimization and automation in financial services applications. OFSAA FSDF/OFSAAI deployment, application support, and release management across Linux and Oracle environments. Managed end-to-end activities including CR implementation, development support, model release, Erwin build deployment, and installation kit deployment using WinSCP. Performed OFSAA Infrastructure installation, Infodom setup, ETL source configuration, database schema deployment, and execution of installation/configuration scripts. Validated successful creation of tables, columns, views, sequences, triggers, and metadata objects through post-deployment verification. Experienced in log analysis, troubleshooting deployment issues, Tomcat/JDBC configuration, and coordinating with PMG, Development, Release, and Database teams for successful production releases and upgrades.
+Responsibilities:
+Developed complex SQL queries and PL/SQL scripts for data management and automation.
+Managed Linux/Unix servers using PuTTY, including configuration, troubleshooting, and administration.
+Created Python scripts for task automation, data processing, and insight extraction.
+Performed query optimization and performance tuning for efficient database systems.
+
+
+Key Highlights/Work Achievements:
+Streamlined manual processes into automated workflows using Python and PL/SQL, enhancing operational efficiency.
+Tested and validated seeded data in Oracle environments, ensuring data accuracy and system reliability.
+Optimized SQL queries to improve performance, contributing to faster data analysis in financial applications.
+
+
+04/2022 – 07/2024
+Hyderabad, India
+ZOI Health Pvt Ltd
+SQL Developer
+Role Overview: Acted as a SQL Developer specializing in Oracle-based database development for healthcare systems.
+Responsibilities:
+Wrote SQL statements, stored procedures, and PL/SQL code for database manipulation and optimization.
+Collaborated on requirement gathering and stakeholder meetings to translate needs into technical solutions.
+Performed bug resolution, runtime error fixes, and system performance enhancements.
+Managed database exports/imports and data transfers to maintain integrity.
+Key Highlights/Work Achievements:
+Optimized long-running queries, improving system responsiveness in healthcare applications.
+Conducted unit testing and quality assurance, ensuring high standards before deployment.
+Contributed to cross-functional teams, delivering projects on time with enhanced usability.
+
+Projects
+   
+08/2024 – Present
+Client: Oracle Corporation
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+08/2024 – Present
+Client: Lombard Risk, SBI, TD Bank
+Company: Oracle Financial Services Software, Bangalore | Aug 2024 – Present
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Company: Oracle Financial Services Software Ltd, Bangalore | Aug 2024 – Dec 2024
+Client: Gulf Bank 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Oracle Financial Services Data Foundation (OFSDF) Application Pack
+Role: Application Developer
+Role Overview: Application Developer responsible for building and optimizing pre-built financial data applications within the OFSAA suite.
+Responsibilities:
+Developed SQL queries, PL/SQL and PostgreSQL automations to handle data management tasks.
+Administered Linux/Unix servers, including file manipulation and process management.
+Used Python scripts to automate repetitive tasks and streamline data workflows.
+Conducted query testing and optimization for performance improvements.
+
+
+Key Highlights/Work Achievements:
+Automated manual data processes, reducing processing time and enabling more effective financial data analysis.
+Enhanced query performance through targeted optimizations, supporting better decision-making for financial institutions.
+Ensured seamless server operations, minimizing downtime and improving overall system stability.
+
+Regulatory Reporting Project
+Role: Application Developer
+
+Environment/Tools: UNIX, Oracle, OFSAA platform, PLSQL developer, Microsoft Excel, Word, Putty.
+Client Description: Lombard Risk is the leading global provider of regulatory reporting and collateral management solutions that enable clients in the financial services industry to significantly improve their approach in managing risk. It helps in achieving the agility they need to gain advantage through intelligent automation of regulatory reporting and optimization of cross-product collateral management, reducing the cost and complexity of managing risk while maximizing accuracy, speed, and value.
+Project Description: OFSAA being the main application used in generating the Regulatory Reports as per the requirement of Lombard. Hierarchies, Measure, Business Process, Data sets, and Derived Entities are created. On top of these are rules, processes, and batches. All these aim to appropriately populate the cells of the regulatory reports with the lineage.
+
+Responsibilities:
+Going through the functional design documents and figuring out the needed hierarchies, measures, business processes, datasets, and hierarchies. Reuse of any existing entity or creating new entities.
+Finalizing the most appropriate query to hit the data warehouse and extract the desired output.
+Creating materialized views, rules, processes, and batches to synchronize the entire sequence of data flow. 
+Along with day-to-day work, tasked with taking charge of junior teammates to review their work before delivery or check-in. 
+
+
+Gulf Bank Project
+Role: Application Developer
+
+Environment/Tools: UNIX and Windows 10, Oracle, OFSAA 8.1.2.2 – LRM, Toad, SQL developer, WinScp, Putty, notepad++.
+Client Description: Gulf Bank is one of the largest leading banks in Kuwait with a broad offering of consumer banking, wholesale banking, treasury, and financial services. The Bank was founded in 1960, registered as a bank with the Central Bank of Kuwait, and was listed as Gulf Bank (GBK) on the Kuwait Stock Exchange (Boursa Kuwait) in 1984.
+Project Description: Implementing various Banking modules like ALM, LRM, LLFP, FTP, Basel, and MRMM which are available in the OFSAA tool bought by the client. Focused predominantly on the technical side of implementing LRM.
+
+
+
+
+
+
+
+Responsibilities:
+Connecting with the functional team and client to understand the needed customizations and their existing data formats.
+Working on the Proof of Concept regarding the feasibility of requirements and maintaining discussions until all open-ended questions are resolved.
+Developing the needed Rules, Hierarchy, Measures, Datasets, Business Processes, Business Assumptions, T2Ts, DTs, Processes, Batches, etc. 
+Setting up test data across all the Staging tables and executing the Out-of-the-box and newly developed customized codes. 
+Securing desired results up to the reporting tables and collaborating with the OBIEE specialist to finalize the fetching queries based on reporting requirements. 
+
+
+
+
+
+04/2022 – 07/2024
+Client: Zoi Health Pvt Ltd
+Electronic Medical Records (EMR) System
+Role: ERP Developer
+Role Overview: ERP Developer designing and maintaining integrated healthcare modules for patient data management.
+Responsibilities:
+Designed and developed modules (e.g., Billing, Pharmacy, HR, Inventory) using SQL/PLSQL and Jasper Reports.
+Created web forms, reports, and dashboards for real-time data access via web and mobile apps.
+Resolved bugs in SQL/PLSQL related to forms, reports, and queries.
+Optimized queries and performed validations to ensure data accuracy.
+Key Highlights/Work Achievements:
+Enabled clinicians and patients to access integrated info across 10+ modules, streamlining healthcare workflows.
+Developed revenue tracking dashboards, reducing discrepancies in accounts and supporting faster decision-making.
+Improved system performance by identifying and fixing inefficiencies, enhancing overall data integrity.
+
+01/2023 – 02/2023
+Client: Zoi Health Pvt Ltd
+Blood Bank Management System
+Role: ERP Developer
+Role Overview: ERP Developer building a secure system for blood donation and distribution in healthcare.
+Responsibilities:
+Designed functionalities for donor registration, disease screening, inventory management, and request matching using PL/SQL and Jasper Reports.
+Implemented automated logic for blood component separation, allocation, and distribution.
+Integrated a feedback module for post-transfusion analysis.
+Ensured data security and integrity through robust coding practices.
+
+
+Key Highlights/Work Achievements:
+Created an efficient system that automated blood request matching, improving response times in critical scenarios.
+Facilitated secure storage and distribution, contributing to safer healthcare operations.
+Analyzed feedback to refine processes, demonstrating strong problem-solving in real-world applications.
+
+
+Education
+
+2017 – 2020
+Sagar, India
+Bachelor of Engineering in Information Technology
+Govt. Indira Gandhi Engineering College
+
+2013 – 2016
+Katni, India
+Polytechnic Diploma in Computer Science and Engineering
+Govt. Polytechnic College
+
+Certifications
+
+Oracle Database (Naresh IT, Hyderabad)
+User Interface (UI/UX) Design (Naresh IT, Hyderabad)
+
+Skills
+
+Databases: Oracle 12c, MySQL, PostgreSQL, MongoDB
+Programming: SQL/PLSQL, Python
+Methodologies: Agile SDLC, Jira
+Tools: Jasper Reports, Git, PuTTY, Oracle SQL Developer
+OS: Linux/Unix Administration
+Soft Skills: Problem-Solving, Team Collaboration

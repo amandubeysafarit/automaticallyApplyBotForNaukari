@@ -1,11 +1,11 @@
 """
-Naukri Auto-Apply Bot - Unified Master Edition (2026 Update)
-============================================================
+Naukri Auto-Apply Bot - Unified Master Edition (Shraddha Dwivedi)
+================================================================
 Single-command, intelligent job application bot for Naukri.com.
-- Filters strictly by candidate's preferences (Keywords, Experience, Location/Remote).
-- Automatically rejects non-matching jobs (Java, Spring Boot, ERP, .NET, Architect, etc.).
+- Filters strictly by candidate's preferences (OFSAA, SQL, PL/SQL, Oracle Developer).
+- Automatically rejects non-matching jobs (PHP, Laravel, Frontend/Mobile-only, Non-IT, etc.).
 - Auto-applies to direct Naukri 1-click jobs.
-- Auto-answers recruiter chatbot questionnaires using Gemini AI & Aman Dubey's CV.
+- Auto-answers recruiter chatbot questionnaires using Gemini AI & Shraddha Dwivedi's CV.
 - For 'Apply on company site' jobs, extracts and records the real external company career portal URL.
 - Maintains exactly TWO clean, structured CSV files:
     1. applied_jobs.csv       (All successfully applied jobs)
@@ -46,19 +46,20 @@ load_dotenv()
 NAUKRI_EMAIL = os.getenv('NAUKRI_EMAIL', '').strip()
 NAUKRI_PASSWORD = os.getenv('NAUKRI_PASSWORD', '').strip()
 
-FIRSTNAME = os.getenv('FIRSTNAME', 'Aman').strip()
-LASTNAME = os.getenv('LASTNAME', 'Dubey').strip()
+FIRSTNAME = os.getenv('FIRSTNAME', 'Shraddha').strip()
+LASTNAME = os.getenv('LASTNAME', 'Dwivedi').strip()
 
 # Target Job Search Preferences
-KEYWORDS = [kw.strip() for kw in os.getenv('KEYWORDS', 'php laravel, laravel developer, php, laravel').split(',') if kw.strip()]
-LOCATION = os.getenv('LOCATION', 'remote').strip().lower()
+default_keywords = 'OFSAA developer, sql developer, plsql developer, oracle plsql developer'
+KEYWORDS = [kw.strip() for kw in os.getenv('KEYWORDS', default_keywords).split(',') if kw.strip()]
+LOCATION = os.getenv('LOCATION', '').strip().lower()
 
 # Parse candidate experience (e.g. '4 years' -> 4)
 total_exp_str = os.getenv('TOTAL_EXPERIENCE', '4 years')
 exp_match = re.search(r'\d+', total_exp_str)
 CANDIDATE_EXP = int(exp_match.group(0)) if exp_match else 4
 
-MAX_APPLICATIONS = int(os.getenv('MAX_APPLICATIONS', '50'))
+MAX_APPLICATIONS = int(os.getenv('MAX_APPLICATIONS', '100'))
 PAGES_PER_KEYWORD = int(os.getenv('PAGES_PER_KEYWORD', '2'))
 
 EDGE_DRIVER_PATH = os.getenv('EDGE_DRIVER_PATH', '').strip()
@@ -86,27 +87,43 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # ------------------------------------------------------------
-# Relevance & Eligibility Filtering Rules
+# Relevance & Eligibility Filtering Rules (Shraddha Dwivedi)
 # ------------------------------------------------------------
 EXCLUDED_ROLES_AND_TECHS = [
-    # Non-PHP tech stacks
-    'java', 'spring boot', 'springboot', 'spring', '.net', 'dotnet', 'asp.net', 'c#', 'c++',
-    'golang', 'flutter', 'ios', 'android', 'swift', 'kotlin', 'ruby', 'rails',
-    # Enterprise ERP / CRM
-    'sap', 'oracle', 'salesforce', 'peoplesoft', 'workday', 'dynamics 365', 'infor', 'epicor',
-    # Data, Analytics & AI roles
-    'data scientist', 'data science', 'data engineer', 'machine learning', 'deep learning',
-    'ai lead', 'ai engineer', 'nlp', 'actuarial', 'data analyst',
-    # Infrastructure, Cloud & DevOps
-    'devops', 'cloud architect', 'platform engineer', 'kubernetes', 'wso2', 'databricks',
-    # Senior Leadership / Architect roles (Aman has 4 yrs exp)
-    'lead architect', 'enterprise architect', 'solution architect', 'adaptive lead',
-    'director', 'vp', 'vice president', 'general manager',
-    # Blockchain / Systems
-    'blockchain', 'solidity', 'rust', 'embedded'
+    # Non-relevant tech stacks & mobile/frontend
+    'php', 'laravel', 'wordpress', 'codeigniter', 'magento', 'shopify', 'drupal',
+    'react native', 'flutter', 'ios developer', 'android developer', 'swift developer', 'kotlin developer',
+    'frontend developer', 'front end developer', 'ui developer', 'ui/ux designer', 'graphic designer',
+    # Non-IT / Sales / BPO
+    'telecaller', 'inside sales', 'field sales', 'business development executive', 'bde',
+    'hr recruiter', 'recruitment executive', 'bpo', 'voice process', 'customer care',
+    'content writer', 'copywriter', 'seo executive', 'digital marketer',
+    # Hardware / Embedded
+    'vlsi', 'embedded c', 'pcb', 'hardware engineer',
+    # Senior Leadership / Architect roles far above candidate experience (> 6-7 yrs)
+    'director', 'vp', 'vice president', 'general manager', 'chief architect', 'head of engineering'
 ]
 
-CORE_KEYWORDS = ['php', 'laravel', 'codeigniter']
+# Core domain target keywords for Shraddha Dwivedi (OFSAA, SQL, PL/SQL, Oracle, Database)
+DEFAULT_CORE_KEYWORDS = [
+    'ofsaa', 'ofsdf', 'ofsaai', 'fsdf', 'lrm', 'alm',
+    'sql', 'plsql', 'pl/sql', 'oracle', 'database developer', 'database engineer',
+    'rdbms', 'etl', 'data warehouse', 'data warehousing', 'dwh',
+    'performance tuning', 'jasper reports', 'query optimization', 'data migration'
+]
+
+
+def get_all_target_keywords():
+    """Combines DEFAULT_CORE_KEYWORDS with user keywords from .env."""
+    tokens = set(DEFAULT_CORE_KEYWORDS)
+    for kw in KEYWORDS:
+        kw_clean = kw.lower().strip()
+        if kw_clean:
+            tokens.add(kw_clean)
+            for part in re.split(r'[\s,\-_/]+', kw_clean):
+                if len(part) > 2 and part not in ['developer', 'engineer', 'lead', 'jobs', 'senior']:
+                    tokens.add(part)
+    return list(tokens)
 
 
 def parse_experience_range(text):
@@ -124,36 +141,44 @@ def parse_experience_range(text):
 
 def is_job_relevant(title, url, exp_str="", loc_str="", skills_str="", jd_snippet=""):
     """
-    Evaluates whether a job matches candidate preferences:
-    - Target: PHP, Laravel, Web Development
-    - Reject: Java, Spring Boot, ERP, .NET, Architect, DevOps, etc.
+    Evaluates whether a job matches candidate preferences (Shraddha Dwivedi):
+    - Target: OFSAA, SQL, PL/SQL, Oracle Developer, Database Engineer, Application Developer.
+    - Reject: PHP, Laravel, Mobile/Frontend-only, Sales, BPO, Hardware, or over-experienced leadership roles.
     - Experience: Candidate has 4 yrs -> reject min_exp > 6 yrs.
-    - Location: If LOCATION=remote, reject office-only non-remote roles.
+    - Location: If LOCATION specified in .env, filter accordingly; if empty, permit all.
     Returns (is_match: bool, reason: str)
     """
     title_lower = (title or "").lower().strip()
     url_lower = (url or "").lower().strip()
     combined_text = f"{title_lower} {url_lower} {(skills_str or '').lower()} {(jd_snippet or '').lower()}"
 
+    target_keywords = get_all_target_keywords()
+
     # 1. Negative Tech / Role Check
     for exc in EXCLUDED_ROLES_AND_TECHS:
         pattern = r'\b' + re.escape(exc) + r'\b'
         if re.search(pattern, title_lower) or exc in url_lower:
-            # If exc is in title, only permit if PHP or Laravel is explicitly in title too
-            if not any(k in title_lower for k in CORE_KEYWORDS):
+            # If excluded term is in title, only permit if a core database/OFSAA/SQL keyword is explicitly in title
+            if not any(k in title_lower for k in ['ofsaa', 'sql', 'plsql', 'pl/sql', 'oracle']):
                 return False, f"Excluded role/tech: '{exc}'"
 
     # 2. Positive Core Skill Check
-    has_php_laravel = any(k in title_lower or k in url_lower or k in combined_text for k in CORE_KEYWORDS)
-    if not has_php_laravel:
-        # Check if generic web/software developer role
-        generic_roles = ['backend developer', 'web developer', 'full stack', 'fullstack', 'software developer', 'software engineer']
+    has_target_skill = any(k in title_lower or k in url_lower or k in combined_text for k in target_keywords)
+    if not has_target_skill:
+        # Check if generic application/software developer role
+        generic_roles = [
+            'application developer', 'software developer', 'software engineer',
+            'backend developer', 'database developer', 'database engineer',
+            'data engineer', 'consultant', 'associate consultant',
+            'technical consultant', 'analyst', 'programmer', 'technical specialist'
+        ]
         is_generic = any(r in title_lower for r in generic_roles)
         if not is_generic:
-            return False, "Does not match PHP/Laravel or Web Development target"
-        # If generic role, skills or description MUST have PHP or Laravel
-        if not any(k in combined_text for k in CORE_KEYWORDS):
-            return False, "Generic developer role without PHP/Laravel in skills"
+            return False, "Does not match OFSAA/SQL/PLSQL/Oracle target profile"
+        # If generic role, skills or description MUST have SQL, PL/SQL, Oracle, Database or OFSAA
+        core_db_terms = ['sql', 'plsql', 'pl/sql', 'oracle', 'database', 'ofsaa', 'rdbms', 'etl', 'query']
+        if not any(k in combined_text for k in core_db_terms):
+            return False, "Generic developer role without SQL/Oracle/OFSAA in skills or JD"
 
     # 3. Experience Filter
     exp_source = exp_str or url_lower
@@ -162,14 +187,20 @@ def is_job_relevant(title, url, exp_str="", loc_str="", skills_str="", jd_snippe
     if min_exp > (CANDIDATE_EXP + 2):
         return False, f"Experience required too high ({min_exp}-{max_exp} yrs vs candidate {CANDIDATE_EXP} yrs)"
 
-    # 4. Location Filter (if user wants Remote)
-    is_remote_pref = LOCATION in ['remote', 'wfh', 'work from home', 'work-from-home']
-    if is_remote_pref:
+    # 4. Location Filter (if user specified LOCATION in .env)
+    if LOCATION:
         loc_source = f"{loc_str} {url_lower} {combined_text}".lower()
-        remote_indicators = ['remote', 'wfh', 'work from home', 'hybrid', 'india', 'anywhere']
-        # If none of the remote indicators match
-        if not any(ind in loc_source for ind in remote_indicators):
-            return False, f"Not remote/WFH (Location: '{loc_str}')"
+        is_remote_pref = LOCATION in ['remote', 'wfh', 'work from home', 'work-from-home']
+        if is_remote_pref:
+            remote_indicators = ['remote', 'wfh', 'work from home', 'hybrid', 'india', 'anywhere']
+            if not any(ind in loc_source for ind in remote_indicators):
+                return False, f"Not remote/WFH (Location: '{loc_str}')"
+        else:
+            # City specific location check
+            loc_target = LOCATION.lower()
+            allowed_locs = [loc_target, 'remote', 'wfh', 'hybrid', 'india', 'anywhere']
+            if not any(al in loc_source for al in allowed_locs):
+                return False, f"Location '{loc_str}' does not match '{LOCATION}'"
 
     return True, "Matches candidate profile"
 
@@ -522,7 +553,7 @@ def find_and_click_chatbot_save_btn(driver):
 
 def handle_chatbot_with_gemini(driver):
     """
-    Auto-answers recruiter questionnaire using Gemini AI and Aman Dubey's CV.
+    Auto-answers recruiter questionnaire using Gemini AI and Shraddha Dwivedi's CV.
     Returns True on completion, False on timeout.
     """
     logger.info("  🤖 Handling recruiter questionnaire with Gemini AI...")

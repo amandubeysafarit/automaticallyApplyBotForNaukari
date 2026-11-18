@@ -1,18 +1,18 @@
-# Naukri-Autoapply-Bot (Unified Master Edition)
+# Naukri-Autoapply-Bot (Shraddha Dwivedi Edition)
 
 > Intelligent, automated job application bot for Naukri.com using **Selenium**, **Microsoft Edge**, and **Gemini AI**.
-> Custom tailored to apply only to relevant roles (PHP / Laravel / Web Development), filtering out irrelevant technologies and over-qualified roles, answering recruiter questionnaires with AI, capturing external company URLs, and maintaining exactly 2 clean CSV reports.
+> Custom tailored for **Shraddha Dwivedi** to apply to relevant roles (OFSAA Developer, SQL Developer, PL/SQL Developer, Oracle Database Developer), filtering out irrelevant technologies and over-qualified roles, answering recruiter questionnaires with AI, capturing external company URLs, and maintaining exactly 2 clean CSV reports.
 
 ## 📋 Key Features
 
 - ✅ **Single Command Execution** — Run `python Naukri-Edge.py` for end-to-end processing.
 - ✅ **Smart Preference & Relevance Filtering**:
-  - Targets PHP, Laravel, and Web Development roles strictly matching `.env` settings.
-  - Automatically rejects unrelated stacks (Java, Spring Boot, ERP, SAP, .NET, C#, Python/Django, AI Lead, etc.).
-  - Experience filter ensures you only apply to roles fitting your experience level (e.g. 4 years).
-  - Location/Remote filter respects `LOCATION=remote`.
+  - Targets OFSAA Developer, SQL Developer, PL/SQL Developer, Oracle Developer roles matching `.env` settings.
+  - Automatically rejects unrelated stacks (PHP, Laravel, Mobile/Frontend-only, Sales, BPO, etc.).
+  - Experience filter ensures you only apply to roles fitting your experience level (4 years exp, skips > 6-7 yrs).
+  - Location filter respects `.env` (pan-India by default, or specific cities / remote).
 - ✅ **Recruiter Chatbot Auto-Answering with Gemini AI**:
-  - Automatically answers recruiter questions and MCQs using candidate CV context.
+  - Automatically answers recruiter questions and MCQs using Shraddha Dwivedi's CV context.
   - Includes robust profile fallbacks so questions never time out or stall.
 - ✅ **Company Career Portal URL Extraction**:
   - When a job requires "Apply on company site", the bot automatically opens/extracts the real external company career URL and records it.
@@ -25,34 +25,33 @@
 ### 1. Prerequisites
 - Python 3.8+ installed
 - Microsoft Edge browser installed
-- Naukri.com account & free Gemini API key
+- Naukri.com credentials configured in `.env`
 
 ### 2. Configure `.env`
 Ensure your `.env` contains:
 ```ini
-NAUKRI_EMAIL=your_email@example.com
+NAUKRI_EMAIL=shraddha.it@yahoo.com
 NAUKRI_PASSWORD=your_password
 
-FIRSTNAME=Aman
-LASTNAME=Dubey
+FIRSTNAME=Shraddha
+LASTNAME=Dwivedi
+PHONE=+91-7610557288
 
 # Job Search Preferences
-KEYWORDS=php laravel, laravel developer, php, laravel
-LOCATION=remote
+KEYWORDS=OFSAA developer, sql developer, plsql developer, oracle plsql developer
+LOCATION=
 PAGES_PER_KEYWORD=2
-MAX_APPLICATIONS=50
-
-# Gemini AI Key
-GEMINI_API_KEY=your_gemini_api_key
+MAX_APPLICATIONS=100
 
 # Candidate Profile Details
 TOTAL_EXPERIENCE=4 years
 RELEVANT_EXPERIENCE=4 years
-CURRENT_CTC=4.5 LPA
-EXPECTED_CTC=7 LPA
+CURRENT_CTC=6 LPA
+EXPECTED_CTC=10 LPA
 NOTICE_PERIOD=15-30 days
-CURRENT_LOCATION=Indore, M.P.
-KEY_SKILLS=PHP, Laravel, MySQL, MongoDB, JavaScript, jQuery, Alpine.js, CodeIgniter, Pest PHP, Git, REST API
+CURRENT_LOCATION=Bangalore
+CURRENT_COMPANY=Highpoints Technologies Pvt Ltd
+KEY_SKILLS=OFSAA, SQL, PL/SQL, Oracle 12c, Python, Linux/Unix, Database Development, Performance Tuning, Jasper Reports
 ```
 
 ### 3. Run the Bot (Single Command)

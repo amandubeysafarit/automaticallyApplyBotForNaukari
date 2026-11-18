@@ -3,7 +3,7 @@ AI External Job Application Agent (auto_apply_external.py) - Enhanced Edition
 =============================================================================
 Reads jobs from 'manual_apply_jobs.csv' (where 'Apply on company site' redirects externally),
 opens the company career portal, fills the form using candidate details and Gemini AI,
-attaches Aman Dubey's CV (PDF/DOCX), and tracks outcomes into:
+attaches Shraddha Dwivedi's CV (PDF/DOCX), and tracks outcomes into:
   - external_applied_passed.csv  (Successfully submitted or filled)
   - external_applied_failed.csv  (Failed / Needs manual apply, e.g. login/captcha)
 
@@ -58,25 +58,25 @@ MANUAL_CSV = os.path.join(BASE_DIR, "manual_apply_jobs.csv")
 PASSED_CSV = os.path.join(BASE_DIR, "external_applied_passed.csv")
 FAILED_CSV = os.path.join(BASE_DIR, "external_applied_failed.csv")
 
-CV_PDF = os.path.join(BASE_DIR, "aman_dubey_cv.pdf")
-CV_DOCX = os.path.join(BASE_DIR, "aman_dubey_cv.docx")
+CV_PDF = os.path.join(BASE_DIR, "Shraddha_Dwivedi_cv.pdf")
+CV_DOCX = os.path.join(BASE_DIR, "Shraddha_Dwivedi_cv.docx")
 RESUME_PATH = CV_PDF if os.path.exists(CV_PDF) else CV_DOCX
 
 # --- Candidate Details ---
 CANDIDATE = {
-    "first_name": os.getenv("FIRSTNAME", "Aman"),
-    "last_name": os.getenv("LASTNAME", "Dubey"),
-    "full_name": f"{os.getenv('FIRSTNAME', 'Aman')} {os.getenv('LASTNAME', 'Dubey')}",
-    "email": os.getenv("NAUKRI_EMAIL", "amandubeysagarit@gmail.com"),
-    "phone": "8269390982",
-    "linkedin": "https://www.linkedin.com/in/aman-dubey-667904199",
-    "location": os.getenv("CURRENT_LOCATION", "Indore, M.P."),
+    "first_name": os.getenv("FIRSTNAME", "Shraddha"),
+    "last_name": os.getenv("LASTNAME", "Dwivedi"),
+    "full_name": f"{os.getenv('FIRSTNAME', 'Shraddha')} {os.getenv('LASTNAME', 'Dwivedi')}",
+    "email": os.getenv("NAUKRI_EMAIL", "shraddha.it@yahoo.com"),
+    "phone": os.getenv("PHONE", "+91-7610557288"),
+    "linkedin": "https://www.linkedin.com/in/shraddha-dwivedi",
+    "location": os.getenv("CURRENT_LOCATION", "Bangalore"),
     "experience": "4",
     "experience_full": "4 years",
     "notice_period": os.getenv("NOTICE_PERIOD", "15-30 days"),
-    "current_company": "Webwiders Software Solutions",
-    "current_ctc": os.getenv("CURRENT_CTC", "4.5 LPA"),
-    "expected_ctc": os.getenv("EXPECTED_CTC", "7 LPA")
+    "current_company": os.getenv("CURRENT_COMPANY", "Highpoints Technologies Pvt Ltd"),
+    "current_ctc": os.getenv("CURRENT_CTC", "6 LPA"),
+    "expected_ctc": os.getenv("EXPECTED_CTC", "10 LPA")
 }
 
 AUTO_SUBMIT = os.getenv("AUTO_SUBMIT", "True").lower() in ["true", "1", "yes"]
@@ -347,7 +347,7 @@ def fill_standard_inputs(driver):
 
 
 def upload_resume_file(driver):
-    """Find input[type='file'] on the page and upload Aman Dubey's CV."""
+    """Find input[type='file'] on the page and upload Shraddha Dwivedi's CV."""
     if not os.path.exists(RESUME_PATH):
         logger.warning(f"Resume file not found at: {RESUME_PATH}")
         return False
