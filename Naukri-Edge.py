@@ -1,11 +1,11 @@
 """
-Naukri Auto-Apply Bot - Unified Master Edition (Shraddha Dwivedi)
+Naukri Auto-Apply Bot - Unified Master Edition (Shreyash Gupta)
 ================================================================
 Single-command, intelligent job application bot for Naukri.com.
-- Filters strictly by candidate's preferences (OFSAA, SQL, PL/SQL, Oracle Developer).
-- Automatically rejects non-matching jobs (PHP, Laravel, Frontend/Mobile-only, Non-IT, etc.).
+- Filters strictly by candidate's preferences (Data Analyst, Business Analyst, Power BI, Python, SQL).
+- Automatically rejects non-matching jobs (PHP, Laravel, Mobile Dev, Non-IT, Senior 4+ yrs exp).
 - Auto-applies to direct Naukri 1-click jobs.
-- Auto-answers recruiter chatbot questionnaires using Gemini AI & Shraddha Dwivedi's CV.
+- Auto-answers recruiter chatbot questionnaires using Gemini AI & Shreyash Gupta's CV.
 - For 'Apply on company site' jobs, extracts and records the real external company career portal URL.
 - Maintains exactly TWO clean, structured CSV files:
     1. applied_jobs.csv       (All successfully applied jobs)
@@ -46,18 +46,18 @@ load_dotenv()
 NAUKRI_EMAIL = os.getenv('NAUKRI_EMAIL', '').strip()
 NAUKRI_PASSWORD = os.getenv('NAUKRI_PASSWORD', '').strip()
 
-FIRSTNAME = os.getenv('FIRSTNAME', 'Shraddha').strip()
-LASTNAME = os.getenv('LASTNAME', 'Dwivedi').strip()
+FIRSTNAME = os.getenv('FIRSTNAME', 'Shreyash').strip()
+LASTNAME = os.getenv('LASTNAME', 'Gupta').strip()
 
 # Target Job Search Preferences
-default_keywords = 'OFSAA developer, sql developer, plsql developer, oracle plsql developer'
+default_keywords = 'data analyst, business analyst, power bi analyst, python data analyst, sql data analyst, junior data analyst'
 KEYWORDS = [kw.strip() for kw in os.getenv('KEYWORDS', default_keywords).split(',') if kw.strip()]
 LOCATION = os.getenv('LOCATION', '').strip().lower()
 
-# Parse candidate experience (e.g. '4 years' -> 4)
-total_exp_str = os.getenv('TOTAL_EXPERIENCE', '4 years')
+# Parse candidate experience (e.g. '1 year' -> 1)
+total_exp_str = os.getenv('TOTAL_EXPERIENCE', '1 year')
 exp_match = re.search(r'\d+', total_exp_str)
-CANDIDATE_EXP = int(exp_match.group(0)) if exp_match else 4
+CANDIDATE_EXP = int(exp_match.group(0)) if exp_match else 1
 
 MAX_APPLICATIONS = int(os.getenv('MAX_APPLICATIONS', '100'))
 PAGES_PER_KEYWORD = int(os.getenv('PAGES_PER_KEYWORD', '2'))
@@ -87,29 +87,30 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # ------------------------------------------------------------
-# Relevance & Eligibility Filtering Rules (Shraddha Dwivedi)
+# Relevance & Eligibility Filtering Rules (Shreyash Gupta)
 # ------------------------------------------------------------
 EXCLUDED_ROLES_AND_TECHS = [
-    # Non-relevant tech stacks & mobile/frontend
+    # Irrelevant web & mobile development stacks
     'php', 'laravel', 'wordpress', 'codeigniter', 'magento', 'shopify', 'drupal',
     'react native', 'flutter', 'ios developer', 'android developer', 'swift developer', 'kotlin developer',
-    'frontend developer', 'front end developer', 'ui developer', 'ui/ux designer', 'graphic designer',
-    # Non-IT / Sales / BPO
+    'ui/ux designer', 'graphic designer',
+    # Non-technical / Sales / BPO
     'telecaller', 'inside sales', 'field sales', 'business development executive', 'bde',
     'hr recruiter', 'recruitment executive', 'bpo', 'voice process', 'customer care',
     'content writer', 'copywriter', 'seo executive', 'digital marketer',
-    # Hardware / Embedded
-    'vlsi', 'embedded c', 'pcb', 'hardware engineer',
-    # Senior Leadership / Architect roles far above candidate experience (> 6-7 yrs)
-    'director', 'vp', 'vice president', 'general manager', 'chief architect', 'head of engineering'
+    # Hardware / Civil / Mechanical
+    'vlsi', 'embedded c', 'pcb', 'hardware engineer', 'mechanical', 'civil engineer',
+    # Senior Leadership / Architect roles far above candidate experience (> 3-4 yrs)
+    'director', 'vp', 'vice president', 'general manager', 'chief architect', 'head of engineering',
+    'principal architect', 'lead architect'
 ]
 
-# Core domain target keywords for Shraddha Dwivedi (OFSAA, SQL, PL/SQL, Oracle, Database)
+# Core domain target keywords for Shreyash Gupta (Data Analytics, Business Analytics, Power BI, Python, SQL)
 DEFAULT_CORE_KEYWORDS = [
-    'ofsaa', 'ofsdf', 'ofsaai', 'fsdf', 'lrm', 'alm',
-    'sql', 'plsql', 'pl/sql', 'oracle', 'database developer', 'database engineer',
-    'rdbms', 'etl', 'data warehouse', 'data warehousing', 'dwh',
-    'performance tuning', 'jasper reports', 'query optimization', 'data migration'
+    'data analyst', 'business analyst', 'power bi', 'powerbi', 'sql', 'python', 'tableau',
+    'excel', 'data analytics', 'data visualization', 'business intelligence', 'bi analyst',
+    'etl', 'eda', 'pandas', 'numpy', 'reporting', 'kpi', 'mis analyst', 'junior data analyst',
+    'data operations', 'financial analyst', 'risk analyst'
 ]
 
 
@@ -121,7 +122,7 @@ def get_all_target_keywords():
         if kw_clean:
             tokens.add(kw_clean)
             for part in re.split(r'[\s,\-_/]+', kw_clean):
-                if len(part) > 2 and part not in ['developer', 'engineer', 'lead', 'jobs', 'senior']:
+                if len(part) > 2 and part not in ['developer', 'engineer', 'lead', 'jobs', 'senior', 'analyst']:
                     tokens.add(part)
     return list(tokens)
 
@@ -141,10 +142,10 @@ def parse_experience_range(text):
 
 def is_job_relevant(title, url, exp_str="", loc_str="", skills_str="", jd_snippet=""):
     """
-    Evaluates whether a job matches candidate preferences (Shraddha Dwivedi):
-    - Target: OFSAA, SQL, PL/SQL, Oracle Developer, Database Engineer, Application Developer.
-    - Reject: PHP, Laravel, Mobile/Frontend-only, Sales, BPO, Hardware, or over-experienced leadership roles.
-    - Experience: Candidate has 4 yrs -> reject min_exp > 6 yrs.
+    Evaluates whether a job matches candidate preferences (Shreyash Gupta):
+    - Target: Data Analyst, Business Analyst, Power BI Analyst, SQL/Python Analyst, MIS Analyst.
+    - Reject: PHP, Laravel, Mobile-only, Sales, BPO, Hardware, or roles requiring 4+ years exp.
+    - Experience: Candidate is a Fresher / 1 yr exp -> reject min_exp > 3 yrs.
     - Location: If LOCATION specified in .env, filter accordingly; if empty, permit all.
     Returns (is_match: bool, reason: str)
     """
@@ -158,34 +159,33 @@ def is_job_relevant(title, url, exp_str="", loc_str="", skills_str="", jd_snippe
     for exc in EXCLUDED_ROLES_AND_TECHS:
         pattern = r'\b' + re.escape(exc) + r'\b'
         if re.search(pattern, title_lower) or exc in url_lower:
-            # If excluded term is in title, only permit if a core database/OFSAA/SQL keyword is explicitly in title
-            if not any(k in title_lower for k in ['ofsaa', 'sql', 'plsql', 'pl/sql', 'oracle']):
+            # If excluded term is in title, only permit if a core data keyword is explicitly in title
+            if not any(k in title_lower for k in ['data', 'analyst', 'analytics', 'power bi', 'business analyst']):
                 return False, f"Excluded role/tech: '{exc}'"
 
     # 2. Positive Core Skill Check
     has_target_skill = any(k in title_lower or k in url_lower or k in combined_text for k in target_keywords)
     if not has_target_skill:
-        # Check if generic application/software developer role
+        # Check if generic analyst / associate role
         generic_roles = [
-            'application developer', 'software developer', 'software engineer',
-            'backend developer', 'database developer', 'database engineer',
-            'data engineer', 'consultant', 'associate consultant',
-            'technical consultant', 'analyst', 'programmer', 'technical specialist'
+            'data analyst', 'business analyst', 'analyst', 'associate analyst',
+            'junior analyst', 'trainee', 'graduate engineer trainee', 'get',
+            'business intelligence', 'operations analyst', 'mis executive'
         ]
         is_generic = any(r in title_lower for r in generic_roles)
         if not is_generic:
-            return False, "Does not match OFSAA/SQL/PLSQL/Oracle target profile"
-        # If generic role, skills or description MUST have SQL, PL/SQL, Oracle, Database or OFSAA
-        core_db_terms = ['sql', 'plsql', 'pl/sql', 'oracle', 'database', 'ofsaa', 'rdbms', 'etl', 'query']
-        if not any(k in combined_text for k in core_db_terms):
-            return False, "Generic developer role without SQL/Oracle/OFSAA in skills or JD"
+            return False, "Does not match Data Analyst / Business Analyst target profile"
+        # If generic role, skills or description MUST have data analytics skills
+        core_data_terms = ['data', 'sql', 'python', 'excel', 'power bi', 'tableau', 'analytics', 'dashboard', 'reporting']
+        if not any(k in combined_text for k in core_data_terms):
+            return False, "Generic role without Data/Analytics/SQL/PowerBI in skills or JD"
 
-    # 3. Experience Filter
+    # 3. Experience Filter (Shreyash has 0-1 yr exp)
     exp_source = exp_str or url_lower
     min_exp, max_exp = parse_experience_range(exp_source)
-    # Candidate has 4 years experience; cannot qualify for 7+, 10+, 17+ yrs roles
-    if min_exp > (CANDIDATE_EXP + 2):
-        return False, f"Experience required too high ({min_exp}-{max_exp} yrs vs candidate {CANDIDATE_EXP} yrs)"
+    # Reject roles requiring min_exp > 3 years (e.g. 4-8 yrs, 5+ yrs)
+    if min_exp > 3:
+        return False, f"Experience required too high ({min_exp}-{max_exp} yrs vs candidate {CANDIDATE_EXP} yr)"
 
     # 4. Location Filter (if user specified LOCATION in .env)
     if LOCATION:
@@ -469,7 +469,6 @@ def extract_job_details(driver):
 def extract_company_external_url(driver, company_btn, job_url):
     """
     Extracts the real external company career portal URL when 'Apply on company site' is present.
-    Clicks the button, catches the new tab or redirect, captures the URL, closes the tab, and returns.
     """
     external_url = "N/A"
     original_window = driver.current_window_handle
@@ -499,7 +498,6 @@ def extract_company_external_url(driver, company_btn, job_url):
             driver.close()
             driver.switch_to.window(original_window)
         else:
-            # Check if navigated in current tab
             if driver.current_url != job_url and "naukri.com" not in driver.current_url:
                 external_url = driver.current_url
                 driver.get(job_url)
@@ -537,7 +535,6 @@ def find_and_click_chatbot_save_btn(driver):
         except Exception:
             pass
 
-    # Try CSS
     for sel in [".sendMsg", "[class*='sendMsg']", "button.saveBtn", "button[class*='save']", "button[type='submit']"]:
         try:
             btns = driver.find_elements(By.CSS_SELECTOR, sel)
@@ -553,7 +550,7 @@ def find_and_click_chatbot_save_btn(driver):
 
 def handle_chatbot_with_gemini(driver):
     """
-    Auto-answers recruiter questionnaire using Gemini AI and Shraddha Dwivedi's CV.
+    Auto-answers recruiter questionnaire using Gemini AI and Shreyash Gupta's CV.
     Returns True on completion, False on timeout.
     """
     logger.info("  🤖 Handling recruiter questionnaire with Gemini AI...")
@@ -561,7 +558,7 @@ def handle_chatbot_with_gemini(driver):
     for iteration in range(25):  # Up to ~50 seconds
         time.sleep(2)
 
-        # Check if drawer has closed (means application finished)
+        # Check if drawer has closed
         containers = driver.find_elements(By.CSS_SELECTOR, "[id*='ChatbotContainer'], .chatbot_Drawer, .drawer-wrapper")
         if not containers or not any(c.is_displayed() for c in containers):
             logger.info("  ✓ Questionnaire completed and drawer closed!")
@@ -603,7 +600,6 @@ def handle_chatbot_with_gemini(driver):
                             clicked = True
                             break
                     if not clicked and labels:
-                        # Fallback click first valid option
                         driver.execute_script("arguments[0].click();", labels[0])
 
                     time.sleep(1)
@@ -630,7 +626,6 @@ def handle_chatbot_with_gemini(driver):
                 answer = gemini_helper.answer_question(q_text)
                 logger.info(f"  💡 Gemini Answer: '{answer}'")
 
-                # Insert answer and trigger DOM events
                 driver.execute_script("""
                     arguments[0].focus();
                     arguments[0].innerText = arguments[1];
@@ -658,7 +653,7 @@ def handle_chatbot_with_gemini(driver):
         except Exception as e:
             logger.debug(f"Text handle error: {e}")
 
-        # 3. Action Buttons check (Save/Next/Submit)
+        # 3. Action Buttons check
         find_and_click_chatbot_save_btn(driver)
 
     return False
@@ -954,7 +949,7 @@ def apply_to_jobs(driver, job_links):
 # ------------------------------------------------------------
 def main():
     logger.info("=" * 60)
-    logger.info("Naukri Auto-Apply Bot - Unified Master Edition (2026)")
+    logger.info("Naukri Auto-Apply Bot - Unified Master Edition (Shreyash Gupta)")
     logger.info("=" * 60)
 
     if not validate_config():
@@ -962,7 +957,7 @@ def main():
 
     logger.info(f"Target Keywords:       {KEYWORDS}")
     logger.info(f"Target Location:       {LOCATION or 'Anywhere'}")
-    logger.info(f"Candidate Experience:  {CANDIDATE_EXP} years")
+    logger.info(f"Candidate Experience:  {CANDIDATE_EXP} year(s)")
     logger.info(f"Max Applications:      {MAX_APPLICATIONS}")
     logger.info(f"Pages per Keyword:     {PAGES_PER_KEYWORD}")
 

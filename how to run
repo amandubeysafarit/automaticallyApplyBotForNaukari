@@ -1,5 +1,5 @@
 # ==============================================================
-# Naukri Auto-Apply Bot - Shraddha Dwivedi
+# Naukri Auto-Apply Bot - Shreyash Gupta
 # ==============================================================
 
 Sirf ek hi command chalana hai:
@@ -7,10 +7,10 @@ Sirf ek hi command chalana hai:
 python Naukri-Edge.py
 
 # Yeh command kya karega:
-# 1. Aapke .env preferences (KEYWORDS: OFSAA developer, sql developer, plsql developer, LOCATION, etc.) ke mutabiq jobs khojega.
-# 2. Bekar / irrelevant jobs (PHP, Laravel, Mobile/Frontend-only, Non-IT, over-experience > 6-7 yrs) ko automatically skip karega.
+# 1. Aapke .env preferences (KEYWORDS: data analyst, business analyst, power bi analyst, python data analyst, etc.) ke mutabiq jobs khojega.
+# 2. Bekar / irrelevant jobs (PHP, Laravel, Mobile dev, Non-IT sales, over-experience > 3-4 yrs) ko automatically skip karega.
 # 3. Direct Naukri 1-click jobs ko automatically apply karega.
-# 4. Recruiter chatbot / questionnaire aane par Gemini AI aur Shraddha Dwivedi ki CV context se auto-answer karke apply karega.
+# 4. Recruiter chatbot / questionnaire aane par Gemini AI aur Shreyash Gupta ki CV context se auto-answer karke apply karega.
 # 5. 'Apply on company site' aane par company ki real website career URL extract karega.
 # 6. Sirf 2 clean CSV files maintain karega:
 #    - applied_jobs.csv       (Safal applications ki report)

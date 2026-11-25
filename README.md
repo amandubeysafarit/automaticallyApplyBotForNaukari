@@ -1,18 +1,18 @@
-# Naukri-Autoapply-Bot (Shraddha Dwivedi Edition)
+# Naukri-Autoapply-Bot (Shreyash Gupta Edition)
 
 > Intelligent, automated job application bot for Naukri.com using **Selenium**, **Microsoft Edge**, and **Gemini AI**.
-> Custom tailored for **Shraddha Dwivedi** to apply to relevant roles (OFSAA Developer, SQL Developer, PL/SQL Developer, Oracle Database Developer), filtering out irrelevant technologies and over-qualified roles, answering recruiter questionnaires with AI, capturing external company URLs, and maintaining exactly 2 clean CSV reports.
+> Custom tailored for **Shreyash Gupta** to apply to relevant roles (Data Analyst, Business Analyst, Power BI Analyst, Python/SQL Analyst), filtering out irrelevant technologies and over-qualified roles, answering recruiter questionnaires with AI, capturing external company URLs, and maintaining exactly 2 clean CSV reports.
 
 ## 📋 Key Features
 
 - ✅ **Single Command Execution** — Run `python Naukri-Edge.py` for end-to-end processing.
 - ✅ **Smart Preference & Relevance Filtering**:
-  - Targets OFSAA Developer, SQL Developer, PL/SQL Developer, Oracle Developer roles matching `.env` settings.
-  - Automatically rejects unrelated stacks (PHP, Laravel, Mobile/Frontend-only, Sales, BPO, etc.).
-  - Experience filter ensures you only apply to roles fitting your experience level (4 years exp, skips > 6-7 yrs).
+  - Targets Data Analyst, Business Analyst, Power BI Analyst, Python/SQL Data Analyst roles matching `.env` settings.
+  - Automatically rejects unrelated stacks (PHP, Laravel, Mobile Dev, Sales, BPO, etc.).
+  - Experience filter ensures you apply to roles fitting your profile (Entry-level / Fresher to 3 yrs, skipping 4+ yrs senior roles).
   - Location filter respects `.env` (pan-India by default, or specific cities / remote).
 - ✅ **Recruiter Chatbot Auto-Answering with Gemini AI**:
-  - Automatically answers recruiter questions and MCQs using Shraddha Dwivedi's CV context.
+  - Automatically answers recruiter questions and MCQs using Shreyash Gupta's CV context.
   - Includes robust profile fallbacks so questions never time out or stall.
 - ✅ **Company Career Portal URL Extraction**:
   - When a job requires "Apply on company site", the bot automatically opens/extracts the real external company career URL and records it.
@@ -30,28 +30,28 @@
 ### 2. Configure `.env`
 Ensure your `.env` contains:
 ```ini
-NAUKRI_EMAIL=shraddha.it@yahoo.com
+NAUKRI_EMAIL=shreyash2025gupta@gmail.com
 NAUKRI_PASSWORD=your_password
 
-FIRSTNAME=Shraddha
-LASTNAME=Dwivedi
-PHONE=+91-7610557288
+FIRSTNAME=Shreyash
+LASTNAME=Gupta
+PHONE=+91-7879946573
 
 # Job Search Preferences
-KEYWORDS=OFSAA developer, sql developer, plsql developer, oracle plsql developer
+KEYWORDS=data analyst, business analyst, power bi analyst, python data analyst, sql data analyst, junior data analyst
 LOCATION=
 PAGES_PER_KEYWORD=2
 MAX_APPLICATIONS=100
 
 # Candidate Profile Details
-TOTAL_EXPERIENCE=4 years
-RELEVANT_EXPERIENCE=4 years
-CURRENT_CTC=6 LPA
-EXPECTED_CTC=10 LPA
-NOTICE_PERIOD=15-30 days
-CURRENT_LOCATION=Bangalore
-CURRENT_COMPANY=Highpoints Technologies Pvt Ltd
-KEY_SKILLS=OFSAA, SQL, PL/SQL, Oracle 12c, Python, Linux/Unix, Database Development, Performance Tuning, Jasper Reports
+TOTAL_EXPERIENCE=1 year
+RELEVANT_EXPERIENCE=1 year
+CURRENT_CTC=3 LPA
+EXPECTED_CTC=5 LPA
+NOTICE_PERIOD=Immediate
+CURRENT_LOCATION=Bhopal, M.P.
+CURRENT_COMPANY=Fresher / MBA Business Analytics
+KEY_SKILLS=SQL, Python, Power BI, Excel, Tableau, Pandas, NumPy, Data Analytics, ETL, Business Intelligence, Data Visualization
 ```
 
 ### 3. Run the Bot (Single Command)

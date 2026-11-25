@@ -1,0 +1,48 @@
+
+
+
+shreyash2025gupta@gmail.com
+ (+91) 7879946573
+PROFESSIONAL SUMMARY
+SHREYASH GUPTA
+
+
+
+shreyash-gupta-6039b6287
+Bhopal,M.P India.
+
+MBA candidate specializing in Business Analytics with hands-on experience in SQL, Python, Power BI, Excel, Tableau, Pandas, NumPy, and Data Visualization. Skilled in data cleaning, ETL, dashboard development, business intelligence, statistical analysis, predictive analytics, KPI reporting, and database management. Experienced in transforming raw data into actionable business insights using data-driven decisionmaking.
+Education
+Lakshmi Narain College of Technology (LNCT) BHOPAL. (MP)2024 -2026
+Masters of Business Administration
+Relevant Coursework - Business Analytics (Data Analyst) and Human Resource Management, General.
+Barkatullah University BHOPAL. (MP)7.0/10 CGPA
+Bachelor of Business Administration
+Relevant Coursework: Business Studies, Financial Risk Analytics, Cost and Management Accounting, MIS, Managerial Economics, Banking, RDBMS, Web design, Computer Programming, Business Statistics.
+Skill Summary
+Languages:Python, Java, C++, SQL, HTML5, CSS3, JavaScript , CSS3, Bootstrap, SEO Fundamentals Databases: MySQL, MongoDB, Oracle, Firebase
+Frameworks: Django, ASP.NET, React Native, Node.js, Flutter, TensorFlow, Pandas, Bootstrap Tools:MS Excel,Tableau, PowerPoint, Git, JIRA, Jenkins, Maven, Postman, Apache Kafka, DNS, Platforms & OS:Linux (Ubuntu, CentOS, Kali), Windows, macOS
+
+Projects & Virtual Internship
+Data Analytics Virtual Job Simulation
+(Deloitte )June 2025
+Cleaned, transformed, and analyzed 120,000+ records using SQL, achieving 98% data accuracy and improving reporting quality. Performed Exploratory Data Analysis (EDA) using Python (Pandas, NumPy) to identify trends and generate actionable business insights.
+Developed interactive Power BI dashboards to monitor revenue, customer retention, fraud detection, and key business KPIs. Automated reporting workflows using Excel Power Query and Pivot Tables, reducing manual effort by 40%.
+Delivered data-driven recommendations through consulting-style presentations to support strategic business decisions.
+AI-Powered Automated Data Analysis & Visualization System
+n8n + NoCodeDB + QuickChart (Project )March 2026
+Built an AI-powered no-code automation workflow to transform spreadsheets into interactive datasets, reducing manual reporting by 80%. Integrated AI-driven analytics with natural language queries to generate automated reports, dashboards, and actionable business insights. Designed automated dashboards for project tracking, resource allocation, KPI monitoring, and operational performance.
+Developed finance and compliance dashboards for banking datasets, enabling fraud detection, risk analysis, and monthly reporting. Improved business reporting efficiency through workflow automation, data visualization, and AI-powered decision support.
+Data Visualization: Empowering Business with Effective Insights
+Virtual Experience (TATA)April 2026
+Designed interactive Power BI dashboards to visualize revenue, customer behavior, operational performance, and business KPIs. Cleaned, validated, and analyzed datasets using SQL, Python, and Excel, ensuring data accuracy and reporting consistency.
+Applied data storytelling and visualization techniques to present actionable insights and support executive decision-making. Conducted Exploratory Data Analysis (EDA) to identify business trends, performance gaps, and growth opportunities.
+Created KPI-focused reports that improved stakeholder understanding and supported data-driven business strategies.
+Certificates
+Google Data Analytics Professional Certificate (Google) – SQL, Excel, Tableau, R, Data Cleaning, Data Visualization, Data Analysis. Foundations of Data Science (Google) – Statistics, Python, Machine Learning Fundamentals, Exploratory Data Analysis (EDA).
+Data Analytics and Databases (Amazon) – SQL, Relational Databases, ETL, Database Management, Cloud Fundamentals. CompTIA A+ Certified: Hardware installation, OS troubleshooting (Windows/Linux), networking basics
+LEADERSHIP AND EXTRACARRICUAR ACTIVITIES
+Automated reporting using SQL, Python, Power BI, and Excel, reducing manual effort by 80%. Analyzed 120,000+ records, achieving 98% data accuracy and improving reporting quality.
+Built interactive Power BI dashboards for KPI tracking, revenue, customer retention, and fraud analysis.
+Optimized reporting workflows with Excel Power Query and Pivot Tables, reducing report preparation time by 40%. Applied Python (Pandas & NumPy) for data cleaning, EDA, and business insight generation.
+Delivered data-driven insights through analytics and visualization to support business decision-making.

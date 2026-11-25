@@ -2,7 +2,7 @@
 Gemini AI Assistant for Naukri Application Questionnaires
 ==========================================================
 Uses Google Gemini to answer recruiter chatbot questions (radio options & free text)
-with candidate context (Shraddha Dwivedi) and automatic fallback.
+with candidate context (Shreyash Gupta) and automatic fallback.
 """
 
 import os
@@ -19,27 +19,26 @@ warnings.filterwarnings('ignore', category=FutureWarning)
 load_dotenv()
 logger = logging.getLogger(__name__)
 
-# Candidate profile details from .env or defaults (Derived directly from Shraddha Dwivedi's CV)
-FIRSTNAME = os.getenv('FIRSTNAME', 'Shraddha')
-LASTNAME = os.getenv('LASTNAME', 'Dwivedi')
-TOTAL_EXPERIENCE = os.getenv('TOTAL_EXPERIENCE', '4 years')
-RELEVANT_EXPERIENCE = os.getenv('RELEVANT_EXPERIENCE', '4 years')
-CURRENT_CTC = os.getenv('CURRENT_CTC', '6 LPA')
-EXPECTED_CTC = os.getenv('EXPECTED_CTC', '10 LPA')
-NOTICE_PERIOD = os.getenv('NOTICE_PERIOD', '15-30 days')
-CURRENT_LOCATION = os.getenv('CURRENT_LOCATION', 'Bangalore')
-CURRENT_COMPANY = os.getenv('CURRENT_COMPANY', 'Highpoints Technologies Pvt Ltd')
-PHONE = os.getenv('PHONE', '+91-7610557288')
-EMAIL = os.getenv('NAUKRI_EMAIL', 'shraddha.it@yahoo.com')
-KEY_SKILLS = os.getenv('KEY_SKILLS', 'OFSAA, SQL, PL/SQL, Oracle 12c, Python, Linux/Unix, Database Development, Performance Tuning, Jasper Reports')
+# Candidate profile details from .env or defaults (Derived directly from Shreyash Gupta's CV)
+FIRSTNAME = os.getenv('FIRSTNAME', 'Shreyash')
+LASTNAME = os.getenv('LASTNAME', 'Gupta')
+TOTAL_EXPERIENCE = os.getenv('TOTAL_EXPERIENCE', '1 year')
+RELEVANT_EXPERIENCE = os.getenv('RELEVANT_EXPERIENCE', '1 year')
+CURRENT_CTC = os.getenv('CURRENT_CTC', '3 LPA')
+EXPECTED_CTC = os.getenv('EXPECTED_CTC', '5 LPA')
+NOTICE_PERIOD = os.getenv('NOTICE_PERIOD', 'Immediate')
+CURRENT_LOCATION = os.getenv('CURRENT_LOCATION', 'Bhopal, M.P.')
+CURRENT_COMPANY = os.getenv('CURRENT_COMPANY', 'Fresher / MBA Candidate (LNCT Bhopal)')
+PHONE = os.getenv('PHONE', '+91-7879946573')
+EMAIL = os.getenv('NAUKRI_EMAIL', 'shreyash2025gupta@gmail.com')
+KEY_SKILLS = os.getenv('KEY_SKILLS', 'SQL, Python, Power BI, Excel, Tableau, Pandas, NumPy, Data Analytics, ETL, Business Intelligence, Data Visualization')
 
 # Auto-locate and load CV text
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 POSSIBLE_CV_FILES = [
-    os.path.join(BASE_DIR, "shraddha_dwivedi_cv.txt"),
-    os.path.join(BASE_DIR, "Shraddha_Dwivedi_cv.txt"),
-    os.path.join(BASE_DIR, "Shraddha_Dwivedi_cv.docx"),
-    os.path.join(BASE_DIR, "shraddha_dwivedi_cv.docx")
+    os.path.join(BASE_DIR, "shreyash_gupta_cv.txt"),
+    os.path.join(BASE_DIR, "SHREYASH GUPTA.docx"),
+    os.path.join(BASE_DIR, "SHREYASH GUPTA.pdf")
 ]
 
 FULL_CV_TEXT = ""
@@ -100,7 +99,7 @@ def get_gemini_model():
                 candidate_model = genai.GenerativeModel(model_name)
                 _model = candidate_model
                 _model_name_cached = model_name
-                logger.info(f"🤖 Gemini AI initialized with model '{model_name}' and Shraddha Dwivedi's CV!")
+                logger.info(f"🤖 Gemini AI initialized with model '{model_name}' and Shreyash Gupta's CV!")
                 return _model
             except Exception:
                 continue
@@ -122,39 +121,41 @@ def get_candidate_context():
     """Build candidate context for Gemini using full CV details."""
     if FULL_CV_TEXT:
         return f"""
-Candidate Full Resume & Profile (Shraddha Dwivedi):
+Candidate Full Resume & Profile (Shreyash Gupta):
 ==================================================
 {FULL_CV_TEXT}
 ==================================================
 Additional Application Details:
 - Candidate Name: {FIRSTNAME} {LASTNAME}
-- Target Roles: SQL/PLSQL Developer, OFSAA Developer, Oracle Database Developer, Application Developer
-- Current Company: {CURRENT_COMPANY}
+- Target Roles: Data Analyst, Business Analyst, Power BI Analyst, Python Data Analyst, SQL Analyst, Junior Data Analyst
+- Current Status: {CURRENT_COMPANY}
+- Total Experience: {TOTAL_EXPERIENCE}
+- Relevant Analytics Experience: {RELEVANT_EXPERIENCE}
 - Current CTC: {CURRENT_CTC}
 - Expected CTC: {EXPECTED_CTC}
-- Notice Period: {NOTICE_PERIOD}
+- Notice Period: {NOTICE_PERIOD} (Immediate Joiner)
 - Location: {CURRENT_LOCATION}
 - Comfortable working remotely: Yes, 100%
-- Open to relocate: Yes / Bangalore / Hyderabad / Pune / Remote / Hybrid
+- Open to relocate: Yes / Bhopal / Bangalore / Pune / Hyderabad / Gurgaon / Remote / Hybrid
 - Key Skills: {KEY_SKILLS}
-- Education: Bachelor of Engineering (B.E.) in Information Technology (Govt. Indira Gandhi Engineering College, Sagar, 2020)
+- Education: MBA in Business Analytics (LNCT Bhopal, 2024-2026), BBA (Barkatullah University, Bhopal)
 - Phone: {PHONE}
 - Email: {EMAIL}
 """
     return f"""
 Candidate Profile:
 - Full Name: {FIRSTNAME} {LASTNAME}
-- Target Role: SQL/PLSQL Developer, OFSAA Developer, Oracle Database Developer
+- Target Role: Data Analyst, Business Analyst, Power BI Analyst
 - Total Experience: {TOTAL_EXPERIENCE}
 - Relevant Experience: {RELEVANT_EXPERIENCE}
 - Current CTC: {CURRENT_CTC}
 - Expected CTC: {EXPECTED_CTC}
 - Notice Period: {NOTICE_PERIOD}
-- Current Company: {CURRENT_COMPANY}
+- Current Status: {CURRENT_COMPANY}
 - Location: {CURRENT_LOCATION}
 - Willing to relocate: Yes / Open to Remote and Hybrid
 - Key Skills: {KEY_SKILLS}
-- Education: Bachelor of Engineering (B.E.) in Information Technology (2020)
+- Education: MBA in Business Analytics (2024-2026), BBA
 - Comfortable working remotely: Yes, 100%
 - Phone: {PHONE}
 - Email: {EMAIL}
@@ -172,15 +173,15 @@ def get_fallback_answer(question_text, options=None):
         # Multiple Choice Fallback
         # Notice Period / Joining
         if any(w in q for w in ['notice', 'soon', 'join', 'start']):
-            for target in ['immediately', '15 days', 'within 15', 'within 30', '15-30', 'less than 15', '1 month']:
+            for target in ['immediately', 'immediate', '0-15 days', '15 days', 'within 15', 'less than 15', '1 month']:
                 for opt in options:
                     if target in opt.lower():
                         return opt
 
         # Experience
         if any(w in q for w in ['experience', 'exp', 'years']):
-            # Shraddha has 4 years experience
-            for target in ['4', '3 to 5', '3-5', 'more than 2', 'more than 3', '2 to 4', '4 to 6']:
+            # Shreyash has 0-1 year experience / Fresher
+            for target in ['0-1', '0 to 1', '1 year', '1', 'fresher', '0-2', '0 to 2', 'less than 1']:
                 for opt in options:
                     if target in opt.lower():
                         return opt
@@ -194,7 +195,7 @@ def get_fallback_answer(question_text, options=None):
 
         # CTC
         if any(w in q for w in ['ctc', 'salary']):
-            for target in ['6-8', '5-7', '6-10', '6 to 10', '8-10', '6', '10']:
+            for target in ['3-5', '3 to 5', '4-6', '3', '4', '5', 'negotiable']:
                 for opt in options:
                     if target in opt.lower():
                         return opt
@@ -211,7 +212,7 @@ def get_fallback_answer(question_text, options=None):
     else:
         # Free Text Fallback
         if any(w in q for w in ['experience', 'how many years', 'years of experience', 'total software']):
-            return '4'
+            return '1'
         if any(w in q for w in ['current ctc', 'present ctc', 'current fixed', 'current salary', 'fixed ctc']):
             return CURRENT_CTC
         if any(w in q for w in ['expected ctc', 'expected salary', 'salary expectation']):
@@ -223,7 +224,7 @@ def get_fallback_answer(question_text, options=None):
         if any(w in q for w in ['relocate', 'remote', 'comfortable', 'willing', 'have you', 'are you', 'do you']):
             return 'Yes'
         if any(w in q for w in ['degree', 'qualification', 'education']):
-            return 'B.E. Information Technology'
+            return 'MBA in Business Analytics'
         if any(w in q for w in ['company', 'current employer', 'organization']):
             return CURRENT_COMPANY
         if any(w in q for w in ['tools', 'technologies', 'skills']):
@@ -256,7 +257,7 @@ Available Options:
 {chr(10).join([f"- {opt}" for opt in options])}
 
 Instructions:
-Pick the BEST single option from the Available Options list that best represents candidate Shraddha Dwivedi.
+Pick the BEST single option from the Available Options list that best represents candidate Shreyash Gupta.
 Output ONLY the exact option text without any extra words, quotes, or markdown.
 """
             response = model.generate_content(prompt)
@@ -278,7 +279,7 @@ The recruiter asked the following question on a job application:
 Question: "{question_text}"
 
 Instructions:
-Provide a very short, direct answer suitable for a job application text input field (e.g., "4", "4 years", "15-30 days", "Yes", "6 LPA", "Bangalore", etc.) representing candidate Shraddha Dwivedi.
+Provide a very short, direct answer suitable for a job application text input field (e.g., "1", "1 year", "Immediate", "Yes", "3 LPA", "5 LPA", "Bhopal", etc.) representing candidate Shreyash Gupta.
 Do NOT explain. Do NOT add extra sentences. Output ONLY the concise answer value.
 """
             response = model.generate_content(prompt)
